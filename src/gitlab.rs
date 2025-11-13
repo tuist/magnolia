@@ -127,27 +127,80 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
     if let Some(obj) = ci.as_mapping() {
         if let Some(job) = obj.get(&serde_yaml::Value::String(job_name.to_string())) {
             if let Some(job_map) = job.as_mapping() {
-                println!("{}", format!("Executing job: {}", job_name).green().bold());
+                println!("\n{}", format!("▶ Executing job: {}", job_name).green().bold());
+
+                // Get job metadata
+                let stage = job_map
+                    .get(&serde_yaml::Value::String("stage".to_string()))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("default");
+
+                let image = job_map
+                    .get(&serde_yaml::Value::String("image".to_string()))
+                    .and_then(|v| v.as_str());
+
+                println!("  Stage: {}", stage.blue());
+                if let Some(img) = image {
+                    println!("  Image: {}", img.dimmed());
+                }
 
                 // Get the script
                 if let Some(script) = job_map.get(&serde_yaml::Value::String("script".to_string()))
                 {
                     if let Some(script_array) = script.as_sequence() {
-                        println!("\n{}", "Script commands:".cyan());
-                        for cmd in script_array {
-                            if let Some(cmd_str) = cmd.as_str() {
-                                println!("  {}", cmd_str.dimmed());
+                        let commands: Vec<String> = script_array
+                            .iter()
+                            .filter_map(|cmd| cmd.as_str().map(String::from))
+                            .collect();
+
+                        if commands.is_empty() {
+                            println!("\n{}", "No script commands found".yellow());
+                            return Ok(());
+                        }
+
+                        println!("\n{}", "Commands to execute:".cyan());
+                        for cmd in &commands {
+                            println!("  $ {}", cmd.dimmed());
+                        }
+
+                        // Ask for confirmation
+                        let confirm = inquire::Confirm::new("Execute these commands?")
+                            .with_default(false)
+                            .prompt()
+                            .unwrap_or(false);
+
+                        if !confirm {
+                            println!("{}", "Execution cancelled".yellow());
+                            return Ok(());
+                        }
+
+                        println!("\n{}", "─".repeat(60).dimmed());
+
+                        // Execute commands
+                        for (i, cmd) in commands.iter().enumerate() {
+                            println!("\n{} {}", format!("[{}/{}]", i + 1, commands.len()).cyan(), cmd.yellow());
+
+                            let status = tokio::process::Command::new("sh")
+                                .arg("-c")
+                                .arg(cmd)
+                                .status()
+                                .await
+                                .context(format!("Failed to execute command: {}", cmd))?;
+
+                            if !status.success() {
+                                let code = status.code().unwrap_or(-1);
+                                println!("\n{}", format!("✗ Command failed with exit code {}", code).red().bold());
+                                anyhow::bail!("Command failed: {}", cmd);
+                            } else {
+                                println!("{}", format!("✓ Command succeeded").green());
                             }
                         }
 
-                        println!(
-                            "\n{}",
-                            "Note: Actual execution is not yet implemented.".yellow()
-                        );
-                        println!(
-                            "This would execute the above commands in the specified environment."
-                        );
+                        println!("\n{}", "─".repeat(60).dimmed());
+                        println!("\n{}", format!("✓ Job '{}' completed successfully", job_name).green().bold());
                     }
+                } else {
+                    println!("\n{}", "No script defined for this job".yellow());
                 }
 
                 return Ok(());

@@ -1,0 +1,5 @@
+test-job:
+  script:
+    - echo "Starting test"
+    - echo "Running step 2"
+    - echo "Test completed successfully"

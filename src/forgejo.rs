@@ -108,14 +108,14 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
         .context(format!("Failed to parse {}", pipeline_path.display()))?;
 
     if let Some(job) = workflow.jobs.get(job_name) {
-        println!("{}", format!("Executing job: {}", job_name).green().bold());
+        println!("\n{}", format!("▶ Analyzing job: {}", job_name).cyan().bold());
         println!(
-            "Runs on: {}",
+            "  Runs on: {}",
             job.runs_on.as_deref().unwrap_or("N/A").blue()
         );
 
         if let Some(container) = &job.container {
-            println!("Container: {}", container.dimmed());
+            println!("  Container: {}", container.dimmed());
         }
 
         if let Some(steps) = &job.steps {
@@ -135,11 +135,15 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
             }
         }
 
-        println!(
-            "\n{}",
-            "Note: Actual execution is not yet implemented.".yellow()
-        );
-        println!("This would execute the above steps in the specified environment.");
+        println!("\n{}", "─".repeat(60).dimmed());
+        println!("\n{}", "ℹ Forgejo Actions Execution".yellow().bold());
+        println!("Forgejo Actions are compatible with GitHub Actions and use marketplace actions.");
+        println!("\nFor local execution, consider using:");
+        println!("  • {} - Run GitHub Actions locally using Docker", "act".cyan());
+        println!("    Install: brew install act");
+        println!("    Usage: act -j {}", job_name);
+        println!("\n{}", "─".repeat(60).dimmed());
+
         return Ok(());
     }
 
