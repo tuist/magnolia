@@ -20,6 +20,43 @@ struct Job {
     image: Option<String>,
 }
 
+pub fn get_jobs_from_file(pipeline_path: &PathBuf) -> Result<Vec<String>> {
+    let content = std::fs::read_to_string(pipeline_path)
+        .context(format!("Failed to read {}", pipeline_path.display()))?;
+
+    let ci: serde_yaml::Value = serde_yaml::from_str(&content)
+        .context(format!("Failed to parse {}", pipeline_path.display()))?;
+
+    let mut jobs = Vec::new();
+
+    if let Some(obj) = ci.as_mapping() {
+        let reserved_keys = vec![
+            "stages",
+            "variables",
+            "default",
+            "include",
+            "workflow",
+            "image",
+            "before_script",
+            "after_script",
+        ];
+
+        for (key, value) in obj {
+            if let Some(key_str) = key.as_str() {
+                if reserved_keys.contains(&key_str) || key_str.starts_with('.') {
+                    continue;
+                }
+
+                if value.as_mapping().is_some() {
+                    jobs.push(key_str.to_string());
+                }
+            }
+        }
+    }
+
+    Ok(jobs)
+}
+
 pub fn list_jobs(path: &PathBuf) -> Result<()> {
     let gitlab_ci_path = path.join(".gitlab-ci.yml");
 
@@ -80,18 +117,12 @@ pub fn list_jobs(path: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-pub async fn run_job(path: &PathBuf, job_name: &str) -> Result<()> {
-    let gitlab_ci_path = path.join(".gitlab-ci.yml");
+pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Result<()> {
+    let content = std::fs::read_to_string(pipeline_path)
+        .context(format!("Failed to read {}", pipeline_path.display()))?;
 
-    if !gitlab_ci_path.exists() {
-        anyhow::bail!("No .gitlab-ci.yml found in {}", path.display());
-    }
-
-    let content =
-        std::fs::read_to_string(&gitlab_ci_path).context("Failed to read .gitlab-ci.yml")?;
-
-    let ci: serde_yaml::Value =
-        serde_yaml::from_str(&content).context("Failed to parse .gitlab-ci.yml")?;
+    let ci: serde_yaml::Value = serde_yaml::from_str(&content)
+        .context(format!("Failed to parse {}", pipeline_path.display()))?;
 
     if let Some(obj) = ci.as_mapping() {
         if let Some(job) = obj.get(&serde_yaml::Value::String(job_name.to_string())) {

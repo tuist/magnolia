@@ -25,6 +25,17 @@ struct Step {
     uses: Option<String>,
 }
 
+pub fn get_jobs_from_file(pipeline_path: &PathBuf) -> Result<Vec<String>> {
+    let content = std::fs::read_to_string(pipeline_path)
+        .context(format!("Failed to read {}", pipeline_path.display()))?;
+
+    let workflow: GitHubWorkflow = serde_yaml::from_str(&content)
+        .context(format!("Failed to parse {}", pipeline_path.display()))?;
+
+    let jobs: Vec<String> = workflow.jobs.keys().cloned().collect();
+    Ok(jobs)
+}
+
 pub fn list_jobs(path: &PathBuf) -> Result<()> {
     let workflows_dir = path.join(".github").join("workflows");
 
@@ -77,59 +88,44 @@ pub fn list_jobs(path: &PathBuf) -> Result<()> {
     Ok(())
 }
 
-pub async fn run_job(path: &PathBuf, job_name: &str) -> Result<()> {
-    let workflows_dir = path.join(".github").join("workflows");
+pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Result<()> {
+    let content = std::fs::read_to_string(pipeline_path)
+        .context(format!("Failed to read {}", pipeline_path.display()))?;
 
-    if !workflows_dir.exists() || !workflows_dir.is_dir() {
-        anyhow::bail!("No .github/workflows directory found in {}", path.display());
-    }
+    let workflow: GitHubWorkflow = serde_yaml::from_str(&content)
+        .context(format!("Failed to parse {}", pipeline_path.display()))?;
 
-    let entries =
-        std::fs::read_dir(&workflows_dir).context("Failed to read workflows directory")?;
+    if let Some(job) = workflow.jobs.get(job_name) {
+        println!("{}", format!("Executing job: {}", job_name).green().bold());
+        println!(
+            "Runs on: {}",
+            job.runs_on.as_deref().unwrap_or("N/A").blue()
+        );
 
-    for entry in entries {
-        let entry = entry?;
-        let path = entry.path();
-
-        if path.extension().and_then(|s| s.to_str()) == Some("yml")
-            || path.extension().and_then(|s| s.to_str()) == Some("yaml")
-        {
-            let content = std::fs::read_to_string(&path)?;
-            let workflow: GitHubWorkflow = serde_yaml::from_str(&content)?;
-
-            if let Some(job) = workflow.jobs.get(job_name) {
-                println!("{}", format!("Executing job: {}", job_name).green().bold());
-                println!(
-                    "Runs on: {}",
-                    job.runs_on.as_deref().unwrap_or("N/A").blue()
-                );
-
-                if let Some(steps) = &job.steps {
-                    println!("\n{}", "Steps:".cyan());
-                    for (i, step) in steps.iter().enumerate() {
-                        if let Some(name) = &step.name {
-                            println!("  {}. {}", i + 1, name);
-                        } else if let Some(uses) = &step.uses {
-                            println!("  {}. Uses: {}", i + 1, uses.dimmed());
-                        } else if let Some(run) = &step.run {
-                            println!(
-                                "  {}. Run: {}",
-                                i + 1,
-                                run.lines().next().unwrap_or("").dimmed()
-                            );
-                        }
-                    }
+        if let Some(steps) = &job.steps {
+            println!("\n{}", "Steps:".cyan());
+            for (i, step) in steps.iter().enumerate() {
+                if let Some(name) = &step.name {
+                    println!("  {}. {}", i + 1, name);
+                } else if let Some(uses) = &step.uses {
+                    println!("  {}. Uses: {}", i + 1, uses.dimmed());
+                } else if let Some(run) = &step.run {
+                    println!(
+                        "  {}. Run: {}",
+                        i + 1,
+                        run.lines().next().unwrap_or("").dimmed()
+                    );
                 }
-
-                println!(
-                    "\n{}",
-                    "Note: Actual execution is not yet implemented.".yellow()
-                );
-                println!("This would execute the above steps in the specified environment.");
-                return Ok(());
             }
         }
+
+        println!(
+            "\n{}",
+            "Note: Actual execution is not yet implemented.".yellow()
+        );
+        println!("This would execute the above steps in the specified environment.");
+        return Ok(());
     }
 
-    anyhow::bail!("Job '{}' not found in any GitHub workflow", job_name)
+    anyhow::bail!("Job '{}' not found", job_name)
 }
