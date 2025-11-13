@@ -1,0 +1,6 @@
+[tools]
+rust = "latest"
+git-cliff = "latest"
+
+[env]
+_.path = './target/release'

@@ -1,0 +1,40 @@
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  CARGO_HOME: ${CI_PROJECT_DIR}/.cargo
+
+build:
+  stage: build
+  image: rust:latest
+  script:
+    - cargo build --release
+    - echo "Build completed successfully"
+  artifacts:
+    paths:
+      - target/release/magnolia
+
+test:
+  stage: test
+  image: rust:latest
+  script:
+    - cargo test --all
+    - echo "Tests passed"
+
+lint:
+  stage: test
+  image: rust:latest
+  script:
+    - rustup component add clippy
+    - cargo clippy -- -D warnings
+    - echo "Linting completed"
+
+format-check:
+  stage: test
+  image: rust:latest
+  script:
+    - rustup component add rustfmt
+    - cargo fmt -- --check
+    - echo "Format check completed"

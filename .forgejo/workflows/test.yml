@@ -1,0 +1,55 @@
+name: Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: rust:latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build project
+        run: |
+          cargo build --release
+          echo "Build completed successfully"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: magnolia
+          path: target/release/magnolia
+
+  test:
+    runs-on: ubuntu-latest
+    container: rust:latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run tests
+        run: |
+          cargo test --all
+          echo "Tests passed"
+
+  lint:
+    runs-on: ubuntu-latest
+    container: rust:latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check formatting
+        run: |
+          rustup component add rustfmt
+          cargo fmt -- --check
+
+      - name: Run clippy
+        run: |
+          rustup component add clippy
+          cargo clippy -- -D warnings

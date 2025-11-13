@@ -1,0 +1,298 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-release:
+    name: Check if release is needed
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+      new_version: ${{ steps.check.outputs.new_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install git-cliff
+        uses: taiki-e/install-action@v2
+        with:
+          tool: git-cliff
+
+      - name: Check if release is needed
+        id: check
+        run: |
+          # Get the latest tag or use v0.0.0 if no tags exist
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $LATEST_TAG"
+
+          # Check if there are any releasable commits since the last tag
+          if git-cliff --unreleased --strip all | grep -q '###'; then
+            # Calculate the next version
+            NEW_VERSION=$(git-cliff --bumped-version --strip all)
+            echo "New version: $NEW_VERSION"
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          else
+            echo "No releasable commits found"
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    name: Build ${{ matrix.target }}
+    needs: check-release
+    if: needs.check-release.outputs.should_release == 'true'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux x86_64
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz tar.xz tar.zst
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            archive: tar.gz tar.xz tar.zst
+
+          # Linux ARM64
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz tar.xz tar.zst
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            archive: tar.gz tar.xz tar.zst
+
+          # Linux ARMv7
+          - target: armv7-unknown-linux-gnueabihf
+            os: ubuntu-latest
+            archive: tar.gz tar.xz tar.zst
+          - target: armv7-unknown-linux-musleabihf
+            os: ubuntu-latest
+            archive: tar.gz tar.xz tar.zst
+
+          # macOS x86_64
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            archive: tar.gz tar.xz tar.zst
+
+          # macOS ARM64
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            archive: tar.gz tar.xz tar.zst
+
+          # Windows x86_64
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            archive: zip
+
+          # Windows ARM64
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+            archive: zip
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update Cargo.toml version
+        shell: bash
+        run: |
+          VERSION="${{ needs.check-release.outputs.new_version }}"
+          # Remove 'v' prefix if present
+          VERSION="${VERSION#v}"
+          sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
+          rm Cargo.toml.bak 2>/dev/null || true
+          echo "Updated Cargo.toml to version $VERSION"
+          grep "^version = " Cargo.toml
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Build binary (Linux cross-compile)
+        if: runner.os == 'Linux'
+        run: |
+          cross build --release --target ${{ matrix.target }}
+
+      - name: Build binary (macOS/Windows)
+        if: runner.os != 'Linux'
+        run: |
+          cargo build --release --target ${{ matrix.target }}
+
+      - name: Create archives
+        shell: bash
+        run: |
+          VERSION="${{ needs.check-release.outputs.new_version }}"
+          TARGET="${{ matrix.target }}"
+          ARCHIVE_FORMATS="${{ matrix.archive }}"
+
+          cd target/$TARGET/release
+
+          # Determine binary name based on platform
+          if [[ "$TARGET" == *"windows"* ]]; then
+            BINARY="magnolia.exe"
+          else
+            BINARY="magnolia"
+          fi
+
+          # Create a staging directory
+          mkdir -p ../../../dist
+          DIST_DIR="$(pwd)/../../../dist"
+
+          # Create temporary directory for archive contents
+          TEMP_DIR=$(mktemp -d)
+
+          # Copy binary
+          cp "$BINARY" "$TEMP_DIR/"
+
+          # Create README for the archive
+          cat > "$TEMP_DIR/README.txt" << 'EOF'
+          Magnolia - Run GitLab, GitHub, and Forgejo pipelines locally
+
+          Usage:
+            magnolia detect     # Detect CI systems in current directory
+            magnolia list       # List available jobs
+            magnolia run <job>  # Run a specific job
+
+          For more information, visit: https://github.com/tuist/magnolia
+          EOF
+
+          # Create archives based on format
+          cd "$TEMP_DIR"
+          for FORMAT in $ARCHIVE_FORMATS; do
+            ARCHIVE_NAME="magnolia-${VERSION}-${TARGET}"
+
+            case $FORMAT in
+              tar.gz)
+                tar czf "${DIST_DIR}/${ARCHIVE_NAME}.tar.gz" *
+                ;;
+              tar.xz)
+                tar cJf "${DIST_DIR}/${ARCHIVE_NAME}.tar.xz" *
+                ;;
+              tar.zst)
+                tar --zstd -cf "${DIST_DIR}/${ARCHIVE_NAME}.tar.zst" *
+                ;;
+              zip)
+                7z a "${DIST_DIR}/${ARCHIVE_NAME}.zip" *
+                ;;
+            esac
+          done
+
+          # Cleanup
+          rm -rf "$TEMP_DIR"
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          cd dist
+          for file in magnolia-*; do
+            if [[ "$RUNNER_OS" == "Windows" ]]; then
+              certutil -hashfile "$file" SHA256 | grep -v "hash" | tr -d ' \r\n' > "${file}.sha256"
+            else
+              shasum -a 256 "$file" | cut -d ' ' -f 1 > "${file}.sha256"
+            fi
+          done
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: magnolia-${{ matrix.target }}
+          path: dist/*
+          retention-days: 1
+
+  create-release:
+    name: Create GitHub Release
+    needs: [check-release, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install git-cliff
+        uses: taiki-e/install-action@v2
+        with:
+          tool: git-cliff
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: magnolia-*
+          merge-multiple: true
+
+      - name: Update Cargo.toml version
+        run: |
+          VERSION="${{ needs.check-release.outputs.new_version }}"
+          # Remove 'v' prefix if present
+          VERSION="${VERSION#v}"
+          sed -i.bak "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
+          rm Cargo.toml.bak 2>/dev/null || true
+          echo "Updated Cargo.toml to version $VERSION"
+          grep "^version = " Cargo.toml
+
+      - name: Generate changelog
+        run: |
+          VERSION="${{ needs.check-release.outputs.new_version }}"
+          git-cliff --tag "$VERSION" -o CHANGELOG.md
+
+          # Generate release notes (latest version only, without version header)
+          git-cliff --tag "$VERSION" --unreleased --strip all -o RELEASE_NOTES.md
+
+          # Remove the version header line (e.g., "## [0.1.0] - 2025-10-24")
+          # Keep only the grouped changes
+          tail -n +2 RELEASE_NOTES.md > RELEASE_NOTES.tmp && mv RELEASE_NOTES.tmp RELEASE_NOTES.md
+
+      - name: Create SHA256SUMS file
+        run: |
+          cd artifacts
+          cat *.sha256 > SHA256SUMS
+          # Also create individual checksums in a readable format
+          for file in magnolia-*; do
+            if [[ ! "$file" == *.sha256 ]]; then
+              sha256sum "$file" >> SHA256SUMS.txt
+            fi
+          done
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.check-release.outputs.new_version }}
+          name: ${{ needs.check-release.outputs.new_version }}
+          body_path: RELEASE_NOTES.md
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/magnolia-*
+            artifacts/SHA256SUMS
+            artifacts/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit version bumps
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Cargo.toml CHANGELOG.md
+          git commit -m "chore(release): bump version to ${{ needs.check-release.outputs.new_version }}"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
