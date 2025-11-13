@@ -3,9 +3,9 @@ use clap::{Parser, Subcommand};
 use colored::*;
 use std::path::PathBuf;
 
-mod gitlab;
-mod github;
 mod forgejo;
+mod github;
+mod gitlab;
 
 #[derive(Parser)]
 #[command(name = "magnolia")]
@@ -85,7 +85,8 @@ fn detect_ci_systems(path: &PathBuf) -> Vec<CISystem> {
     let forgejo_workflows = path.join(".forgejo").join("workflows");
     let gitea_workflows = path.join(".gitea").join("workflows");
     if (forgejo_workflows.exists() && forgejo_workflows.is_dir())
-        || (gitea_workflows.exists() && gitea_workflows.is_dir()) {
+        || (gitea_workflows.exists() && gitea_workflows.is_dir())
+    {
         systems.push(CISystem::Forgejo);
     }
 
@@ -106,7 +107,9 @@ async fn main() -> Result<()> {
                 println!("Magnolia supports:");
                 println!("  - GitLab CI (.gitlab-ci.yml)");
                 println!("  - GitHub Actions (.github/workflows/*.yml)");
-                println!("  - Forgejo Actions (.forgejo/workflows/*.yml or .gitea/workflows/*.yml)");
+                println!(
+                    "  - Forgejo Actions (.forgejo/workflows/*.yml or .gitea/workflows/*.yml)"
+                );
             } else {
                 println!("{}", "Found the following CI systems:".green().bold());
                 for system in systems {
@@ -120,7 +123,10 @@ async fn main() -> Result<()> {
                     "gitlab" => CISystem::GitLab,
                     "github" => CISystem::GitHub,
                     "forgejo" | "gitea" => CISystem::Forgejo,
-                    _ => anyhow::bail!("Unknown CI system: {}. Use 'gitlab', 'github', or 'forgejo'", ci_name),
+                    _ => anyhow::bail!(
+                        "Unknown CI system: {}. Use 'gitlab', 'github', or 'forgejo'",
+                        ci_name
+                    ),
                 }
             } else {
                 // Auto-detect
@@ -129,12 +135,18 @@ async fn main() -> Result<()> {
                     anyhow::bail!("No CI systems detected. Use --ci to specify manually.");
                 }
                 if systems.len() > 1 {
-                    anyhow::bail!("Multiple CI systems detected. Please specify which one to use with --ci");
+                    anyhow::bail!(
+                        "Multiple CI systems detected. Please specify which one to use with --ci"
+                    );
                 }
                 systems.into_iter().next().unwrap()
             };
 
-            println!("{} {}", "Listing jobs for".cyan().bold(), ci_system.to_string().cyan().bold());
+            println!(
+                "{} {}",
+                "Listing jobs for".cyan().bold(),
+                ci_system.to_string().cyan().bold()
+            );
 
             match ci_system {
                 CISystem::GitLab => gitlab::list_jobs(&path)?,
@@ -148,7 +160,10 @@ async fn main() -> Result<()> {
                     "gitlab" => CISystem::GitLab,
                     "github" => CISystem::GitHub,
                     "forgejo" | "gitea" => CISystem::Forgejo,
-                    _ => anyhow::bail!("Unknown CI system: {}. Use 'gitlab', 'github', or 'forgejo'", ci_name),
+                    _ => anyhow::bail!(
+                        "Unknown CI system: {}. Use 'gitlab', 'github', or 'forgejo'",
+                        ci_name
+                    ),
                 }
             } else {
                 // Auto-detect
@@ -157,12 +172,20 @@ async fn main() -> Result<()> {
                     anyhow::bail!("No CI systems detected. Use --ci to specify manually.");
                 }
                 if systems.len() > 1 {
-                    anyhow::bail!("Multiple CI systems detected. Please specify which one to use with --ci");
+                    anyhow::bail!(
+                        "Multiple CI systems detected. Please specify which one to use with --ci"
+                    );
                 }
                 systems.into_iter().next().unwrap()
             };
 
-            println!("{} {} {} {}", "Running job".cyan().bold(), job.yellow(), "on".cyan().bold(), ci_system.to_string().cyan().bold());
+            println!(
+                "{} {} {} {}",
+                "Running job".cyan().bold(),
+                job.yellow(),
+                "on".cyan().bold(),
+                ci_system.to_string().cyan().bold()
+            );
 
             match ci_system {
                 CISystem::GitLab => gitlab::run_job(&path, &job).await?,
