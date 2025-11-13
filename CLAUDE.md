@@ -64,9 +64,15 @@ The project uses `git-cliff` for changelog generation and semantic versioning. T
 
 ## Testing the CLI
 
-The repository includes example pipelines for all three CI systems to test the CLI:
-- `.gitlab-ci.yml`: GitLab CI example with build, test, and lint stages
-- `.github/workflows/test.yml`: GitHub Actions example
-- `.forgejo/workflows/test.yml`: Forgejo Actions example
+The repository includes example pipelines in the `fixtures/` directory for all three CI systems:
+- `fixtures/.gitlab-ci.yml`: GitLab CI example with build, test, and lint stages
+- `fixtures/.github/workflows/test.yml`: GitHub Actions example
+- `fixtures/.forgejo/workflows/test.yml`: Forgejo Actions example
 
-Use `magnolia detect` to see all configured CI systems in this repository.
+Test the CLI with: `magnolia detect --path fixtures`
+
+## CI/CD Workflows
+
+The project uses GitHub Actions for continuous integration:
+- `.github/workflows/magnolia.yml`: Main CI workflow that runs format checks, clippy, tests, and builds across all platforms (Linux, macOS, Windows)
+- `.github/workflows/release.yml`: Automated release workflow triggered on pushes to main with releasable commits
