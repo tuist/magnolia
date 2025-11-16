@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2025-11-16
+
+### 🚀 Features
+
+- Add container-based execution with Podman/Docker support ([8b5dcd8](8b5dcd8b6159ff17ffca6a333c465e5ac8192036))
+
 ## [0.1.3] - 2025-11-16
 
 ### 📚 Documentation
