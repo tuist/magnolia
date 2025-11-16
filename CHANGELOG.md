@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.2] - 2025-11-16
+
+### 📚 Documentation
+
+- Improve Magnolia Manifesto formatting ([7fe098d](7fe098d3110f89d8bb8769e489a0ab83a196e698))
+
 ## [0.1.1] - 2025-11-16
 
 ### 📚 Documentation
