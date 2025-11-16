@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 2025-11-16
+
+### 📚 Documentation
+
+- Add Magnolia Manifesto to README ([c12f212](c12f212503eceb8f86111d6f71552aea4b2a1c1b))
+
 ## [0.1.0] - 2025-11-13
 
 ### 🎨 Styling
