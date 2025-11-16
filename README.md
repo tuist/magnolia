@@ -4,27 +4,27 @@ Run GitLab CI, GitHub Actions, and Forgejo pipelines locally.
 
 ## 🌸 The Magnolia Manifesto
 
-**[Verse 1]**
-They say that if you were to see
-Your CI running locally
-In that terminal window, free
-It brings you good luck
-All of you have come
-Even the vendors who dismissed us
+**[Verse 1]**<br>
+They say that if you were to see<br>
+Your CI running locally<br>
+In that terminal window, free<br>
+It brings you good luck<br>
+All of you have come<br>
+Even the vendors who dismissed us<br>
 Today, they watch
 
-**[Chorus]**
-Throw magnolias at me
-Run your pipelines locally
-Throw magnolias at me
+**[Chorus]**<br>
+Throw magnolias at me<br>
+Run your pipelines locally<br>
+Throw magnolias at me<br>
 Own your CI destiny
 
-**[Verse 2]**
-Over their platforms, open forges burning bright
-Tears and FUD melt into the code
-GitLab and GitHub, Forgejo's might
-Dancing with freedom on top of vendor lock
-Today it's all sovereignty mocking fate
+**[Verse 2]**<br>
+Over their platforms, open forges burning bright<br>
+Tears and FUD melt into the code<br>
+GitLab and GitHub, Forgejo's might<br>
+Dancing with freedom on top of vendor lock<br>
+Today it's all sovereignty mocking fate<br>
 And what you couldn't test locally, you test before you commit
 
 ## 📦 Installation
