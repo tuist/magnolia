@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use crate::container;
+
 #[derive(Debug, Deserialize, Serialize)]
 struct GitLabCI {
     #[serde(flatten)]
@@ -176,28 +178,62 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
 
                         println!("\n{}", "─".repeat(60).dimmed());
 
-                        // Execute commands
-                        for (i, cmd) in commands.iter().enumerate() {
-                            println!("\n{} {}", format!("[{}/{}]", i + 1, commands.len()).cyan(), cmd.yellow());
+                        // Detect container runtime
+                        let runtime = container::detect_runtime().await;
 
-                            let status = tokio::process::Command::new("sh")
-                                .arg("-c")
-                                .arg(cmd)
-                                .status()
+                        // Determine execution strategy
+                        let use_container = image.is_some() && runtime.is_some();
+
+                        if use_container {
+                            let img = image.unwrap();
+                            let rt = runtime.unwrap();
+
+                            // Combine all commands into a single script for container execution
+                            let combined_script = commands.join(" && ");
+
+                            println!(
+                                "\n{} Executing in container",
+                                "→".cyan()
+                            );
+
+                            container::execute_in_container(&rt, img, &combined_script, "/workspace")
                                 .await
-                                .context(format!("Failed to execute command: {}", cmd))?;
+                                .context("Container execution failed")?;
 
-                            if !status.success() {
-                                let code = status.code().unwrap_or(-1);
-                                println!("\n{}", format!("✗ Command failed with exit code {}", code).red().bold());
-                                anyhow::bail!("Command failed: {}", cmd);
-                            } else {
-                                println!("{}", format!("✓ Command succeeded").green());
+                            println!("\n{}", format!("✓ Job '{}' completed successfully", job_name).green().bold());
+                        } else {
+                            // Host execution (original behavior)
+                            if image.is_some() && runtime.is_none() {
+                                println!(
+                                    "\n{} No container runtime found (Podman/Docker), falling back to host execution",
+                                    "⚠".yellow()
+                                );
                             }
-                        }
 
-                        println!("\n{}", "─".repeat(60).dimmed());
-                        println!("\n{}", format!("✓ Job '{}' completed successfully", job_name).green().bold());
+                            println!("\n{} Executing on host", "→".cyan());
+
+                            for (i, cmd) in commands.iter().enumerate() {
+                                println!("\n{} {}", format!("[{}/{}]", i + 1, commands.len()).cyan(), cmd.yellow());
+
+                                let status = tokio::process::Command::new("sh")
+                                    .arg("-c")
+                                    .arg(cmd)
+                                    .status()
+                                    .await
+                                    .context(format!("Failed to execute command: {}", cmd))?;
+
+                                if !status.success() {
+                                    let code = status.code().unwrap_or(-1);
+                                    println!("\n{}", format!("✗ Command failed with exit code {}", code).red().bold());
+                                    anyhow::bail!("Command failed: {}", cmd);
+                                } else {
+                                    println!("{}", format!("✓ Command succeeded").green());
+                                }
+                            }
+
+                            println!("\n{}", "─".repeat(60).dimmed());
+                            println!("\n{}", format!("✓ Job '{}' completed successfully", job_name).green().bold());
+                        }
                     }
                 } else {
                     println!("\n{}", "No script defined for this job".yellow());
