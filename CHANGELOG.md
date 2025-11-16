@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.3] - 2025-11-16
+
+### 📚 Documentation
+
+- Add line breaks to Magnolia Manifesto ([3533bcd](3533bcdc5ec07f2c8279c0f99b76a33162c58f07))
+
 ## [0.1.2] - 2025-11-16
 
 ### 📚 Documentation
