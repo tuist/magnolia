@@ -110,3 +110,63 @@ pub async fn execute_on_host(command: &str) -> Result<()> {
 
     Ok(())
 }
+
+/// Map GitHub Actions / Forgejo Actions runner names to Docker images
+pub fn map_runner_to_image(runs_on: &str) -> Option<&'static str> {
+    match runs_on {
+        // Ubuntu runners
+        "ubuntu-latest" | "ubuntu-24.04" => Some("ubuntu:24.04"),
+        "ubuntu-22.04" => Some("ubuntu:22.04"),
+        "ubuntu-20.04" => Some("ubuntu:20.04"),
+
+        // Debian runners
+        "debian-latest" | "debian-12" => Some("debian:12"),
+        "debian-11" => Some("debian:11"),
+
+        // Alpine runners
+        "alpine-latest" | "alpine-3" => Some("alpine:latest"),
+
+        // macOS and Windows runners cannot run in containers on Linux
+        s if s.starts_with("macos") => None,
+        s if s.starts_with("windows") => None,
+
+        // Unknown runner
+        _ => None,
+    }
+}
+
+/// Execute multiple commands (steps) in a container or on host
+pub async fn execute_steps(
+    runtime: Option<&ContainerRuntime>,
+    image: Option<&str>,
+    commands: &[String],
+) -> Result<()> {
+    if let (Some(rt), Some(img)) = (runtime, image) {
+        // Container execution - combine commands
+        let combined_script = commands.join(" && ");
+
+        println!("\n{} Executing in container", "→".cyan());
+
+        execute_in_container(rt, img, &combined_script, "/workspace").await?;
+    } else {
+        // Host execution
+        if image.is_some() && runtime.is_none() {
+            println!(
+                "\n{} No container runtime found (Podman/Docker), falling back to host execution",
+                "⚠".yellow()
+            );
+        }
+
+        println!("\n{} Executing on host", "→".cyan());
+
+        for (i, cmd) in commands.iter().enumerate() {
+            println!("\n{} {}", format!("[{}/{}]", i + 1, commands.len()).cyan(), cmd.yellow());
+
+            execute_on_host(cmd).await.context(format!("Command failed: {}", cmd))?;
+
+            println!("{}", "✓ Command succeeded".green());
+        }
+    }
+
+    Ok(())
+}

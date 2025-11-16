@@ -49,8 +49,8 @@ magnolia .forgejo/workflows/deploy.yml
 
 ### ⚡ Execution
 
-- **GitLab CI**: Scripts are executed directly on your machine after confirmation. You'll see each command before it runs.
-- **GitHub Actions / Forgejo Actions**: Displays job details and recommends using [act](https://github.com/nektos/act) for local execution with Docker containers.
+- **GitLab CI**: Executes jobs in containers (Podman/Docker) when `image:` is specified, or on host otherwise.
+- **GitHub Actions / Forgejo Actions**: Executes `run:` steps in containers based on `runs-on:` runner. Marketplace actions (`uses:`) support coming soon.
 
 ## 🔧 Supported Systems
 
