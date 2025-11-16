@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2025-11-16
+
+### 🚀 Features
+
+- Add container execution for GitHub Actions and Forgejo Actions ([6377163](637716389272c90dd95f7ed7ab9c0e4c6eee5695))
+
 ## [0.2.0] - 2025-11-16
 
 ### 🚀 Features
