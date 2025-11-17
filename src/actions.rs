@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use colored::*;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::process::Command as StdCommand;
 
 /// Represents a parsed action reference (e.g., "actions/checkout@v4")
 #[derive(Debug, Clone)]
@@ -189,6 +190,9 @@ pub async fn execute_composite_action(
 ) -> Result<()> {
     println!("  {} Executing composite action steps", "→".cyan());
 
+    // Set up GitHub Actions environment
+    let github_env = setup_github_env();
+
     for (i, step) in steps.iter().enumerate() {
         let default_name = format!("Step {}", i + 1);
         let step_name = step.name.as_deref().unwrap_or(&default_name);
@@ -198,10 +202,17 @@ pub async fn execute_composite_action(
             // Execute the run command
             let shell = step.shell.as_deref().unwrap_or("sh");
 
-            let status = tokio::process::Command::new(shell)
-                .arg("-c")
+            let mut cmd = tokio::process::Command::new(shell);
+            cmd.arg("-c")
                 .arg(run)
-                .current_dir(action_dir)
+                .current_dir(action_dir);
+
+            // Add GitHub environment variables
+            for (key, value) in &github_env {
+                cmd.env(key, value);
+            }
+
+            let status = cmd
                 .status()
                 .await
                 .context(format!("Failed to execute composite step: {}", step_name))?;
@@ -271,6 +282,70 @@ pub async fn execute_docker_action(
     Ok(())
 }
 
+/// Set up GitHub Actions environment variables
+fn setup_github_env() -> std::collections::HashMap<String, String> {
+    let mut env = std::collections::HashMap::new();
+
+    // Get current directory as workspace
+    let workspace = std::env::current_dir()
+        .unwrap_or_else(|_| PathBuf::from("."))
+        .to_string_lossy()
+        .to_string();
+
+    // Get git information if available
+    let repo_name = StdCommand::new("git")
+        .args(["config", "--get", "remote.origin.url"])
+        .output()
+        .ok()
+        .and_then(|output| String::from_utf8(output.stdout).ok())
+        .and_then(|url| {
+            // Extract owner/repo from URL
+            url.trim()
+                .strip_prefix("https://github.com/")
+                .or_else(|| url.trim().strip_prefix("git@github.com:"))
+                .map(|s| s.trim_end_matches(".git").to_string())
+        })
+        .unwrap_or_else(|| "user/repo".to_string());
+
+    let sha = StdCommand::new("git")
+        .args(["rev-parse", "HEAD"])
+        .output()
+        .ok()
+        .and_then(|output| String::from_utf8(output.stdout).ok())
+        .map(|s| s.trim().to_string())
+        .unwrap_or_else(|| "0000000000000000000000000000000000000000".to_string());
+
+    let ref_name = StdCommand::new("git")
+        .args(["rev-parse", "--abbrev-ref", "HEAD"])
+        .output()
+        .ok()
+        .and_then(|output| String::from_utf8(output.stdout).ok())
+        .map(|s| format!("refs/heads/{}", s.trim()))
+        .unwrap_or_else(|| "refs/heads/main".to_string());
+
+    // Core GitHub Actions environment
+    env.insert("GITHUB_WORKSPACE".to_string(), workspace.clone());
+    env.insert("GITHUB_REPOSITORY".to_string(), repo_name);
+    env.insert("GITHUB_SHA".to_string(), sha);
+    env.insert("GITHUB_REF".to_string(), ref_name);
+    env.insert("GITHUB_EVENT_NAME".to_string(), "push".to_string());
+    env.insert("GITHUB_ACTOR".to_string(), "magnolia".to_string());
+    env.insert("GITHUB_RUN_ID".to_string(), "1".to_string());
+    env.insert("GITHUB_RUN_NUMBER".to_string(), "1".to_string());
+
+    // Runner environment
+    env.insert("RUNNER_OS".to_string(), std::env::consts::OS.to_string());
+    env.insert("RUNNER_ARCH".to_string(), std::env::consts::ARCH.to_string());
+    env.insert("RUNNER_TEMP".to_string(), std::env::temp_dir().to_string_lossy().to_string());
+    env.insert("RUNNER_TOOL_CACHE".to_string(), format!("{}/.magnolia/tool-cache",
+        std::env::var("HOME").unwrap_or_else(|_| ".".to_string())));
+
+    // CI indicator
+    env.insert("CI".to_string(), "true".to_string());
+
+    env
+}
+
 /// Execute a Node.js action
 pub async fn execute_node_action(
     main: &str,
@@ -297,9 +372,19 @@ pub async fn execute_node_action(
         anyhow::bail!("Action main file not found: {}", main_file.display());
     }
 
-    let status = tokio::process::Command::new("node")
-        .arg(&main_file)
-        .current_dir(action_dir)
+    // Set up GitHub Actions environment
+    let github_env = setup_github_env();
+
+    let mut cmd = tokio::process::Command::new("node");
+    cmd.arg(&main_file)
+        .current_dir(action_dir);
+
+    // Add all GitHub environment variables
+    for (key, value) in github_env {
+        cmd.env(key, value);
+    }
+
+    let status = cmd
         .status()
         .await
         .context(format!("Failed to execute Node.js action: {}", main))?;
