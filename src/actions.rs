@@ -482,8 +482,8 @@ pub async fn execute_node_action(
         let reader = BufReader::new(stdout);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            // Filter out GitHub Actions workflow commands
-            if !line.starts_with("::") {
+            // Filter out GitHub Actions workflow commands and verbose [command] output
+            if !line.starts_with("::") && !line.starts_with("[command]") {
                 println!("    {}", line);
             }
         }
@@ -494,8 +494,8 @@ pub async fn execute_node_action(
         let reader = BufReader::new(stderr);
         let mut lines = reader.lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            // Filter out GitHub Actions workflow commands
-            if !line.starts_with("::") {
+            // Filter out GitHub Actions workflow commands and verbose [command] output
+            if !line.starts_with("::") && !line.starts_with("[command]") {
                 eprintln!("    {}", line.red());
             }
         }
