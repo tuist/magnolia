@@ -50,7 +50,10 @@ magnolia .forgejo/workflows/deploy.yml
 ### ⚡ Execution
 
 - **GitLab CI**: Executes jobs in containers (Podman/Docker) when `image:` is specified, or on host otherwise.
-- **GitHub Actions / Forgejo Actions**: Executes `run:` steps in containers based on `runs-on:` runner. Marketplace actions (`uses:`) support coming soon.
+- **GitHub Actions / Forgejo Actions**:
+  - Executes `run:` steps in containers based on `runs-on:` runner
+  - Executes marketplace actions (`uses:`) - composite, Docker, and Node.js actions supported
+  - Actions are downloaded once and cached locally in `~/.magnolia/actions`
 
 ## 🔧 Supported Systems
 

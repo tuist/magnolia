@@ -1,0 +1,38 @@
+name: Test with Actions
+
+on: [push]
+
+jobs:
+  test-composite:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run tests
+        run: echo "Running tests..."
+
+  test-simple:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Simple echo
+        run: |
+          echo "Hello from GitHub Actions!"
+          echo "This workflow mixes run and uses steps"
+
+      - name: Check files
+        run: ls -la
+
+  test-docker-action:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hello World Docker Action
+        uses: docker://alpine:latest
+        with:
+          entrypoint: /bin/echo
+          args: "Hello from Docker action!"

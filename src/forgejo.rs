@@ -120,46 +120,24 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
         }
 
         if let Some(steps) = &job.steps {
-            // Extract run commands and check for uses steps
-            let mut run_commands = Vec::new();
-            let mut has_uses_steps = false;
-            let mut skipped_steps = Vec::new();
-
             println!("\n{}", "Steps:".cyan());
             for (i, step) in steps.iter().enumerate() {
                 if let Some(run) = &step.run {
                     let step_name = step.name.as_deref().unwrap_or("(unnamed)");
                     println!("  {}. {} {}", i + 1, "Run:".green(), step_name);
-                    run_commands.push(run.clone());
                 } else if let Some(uses) = &step.uses {
-                    has_uses_steps = true;
-                    skipped_steps.push(uses.clone());
-                    println!("  {}. {} {} {}", i + 1, "Uses:".yellow(), uses.dimmed(), "(skipped)".dimmed());
+                    let step_name = step.name.as_deref().unwrap_or("(unnamed)");
+                    println!("  {}. {} {} - {}", i + 1, "Uses:".blue(), uses.dimmed(), step_name);
                 }
             }
 
-            if run_commands.is_empty() {
-                if has_uses_steps {
-                    println!("\n{}", "─".repeat(60).dimmed());
-                    println!("\n{}", "⚠ Forgejo Actions marketplace actions not yet supported".yellow().bold());
-                    println!("This workflow only contains 'uses' steps (marketplace actions).");
-                    println!("Support for marketplace actions is coming soon!");
-                    println!("\n{}", "─".repeat(60).dimmed());
-                } else {
-                    println!("\n{}", "No executable steps found in this job".yellow());
-                }
+            if steps.is_empty() {
+                println!("\n{}", "No executable steps found in this job".yellow());
                 return Ok(());
             }
 
-            // Show commands to execute
-            println!("\n{}", "Commands to execute:".cyan());
-            for cmd in &run_commands {
-                let first_line = cmd.lines().next().unwrap_or("");
-                println!("  $ {}", first_line.dimmed());
-            }
-
             // Ask for confirmation
-            let confirm = inquire::Confirm::new("Execute these commands?")
+            let confirm = inquire::Confirm::new("Execute these steps?")
                 .with_default(false)
                 .prompt()
                 .unwrap_or(false);
@@ -193,20 +171,24 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
                 None
             };
 
-            // Execute steps
-            container::execute_steps(runtime.as_ref(), image, &run_commands).await?;
+            // Execute all steps in order
+            for (i, step) in steps.iter().enumerate() {
+                let default_name = format!("Step {}", i + 1);
+                let step_name = step.name.as_deref().unwrap_or(&default_name);
+                println!("\n{} {}", format!("[{}/{}]", i + 1, steps.len()).cyan(), step_name.yellow());
+
+                if let Some(run) = &step.run {
+                    // Execute run step
+                    container::execute_steps(runtime.as_ref(), image, &[run.clone()]).await?;
+                } else if let Some(uses) = &step.uses {
+                    // Execute action step
+                    use crate::actions;
+                    actions::execute_action(uses).await?;
+                }
+            }
 
             println!("\n{}", "─".repeat(60).dimmed());
             println!("\n{}", format!("✓ Job '{}' completed successfully", job_name).green().bold());
-
-            // Show note about skipped uses steps
-            if has_uses_steps {
-                println!("\n{}", "Note:".yellow().bold());
-                println!("The following 'uses' steps were skipped (not yet supported):");
-                for uses in skipped_steps {
-                    println!("  - {}", uses.dimmed());
-                }
-            }
 
             return Ok(());
         } else {

@@ -3,6 +3,7 @@ use clap::Parser;
 use colored::*;
 use std::path::PathBuf;
 
+mod actions;
 mod container;
 mod forgejo;
 mod github;
