@@ -174,7 +174,8 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
 
                 if let Some(run) = &step.run {
                     // Execute run step
-                    container::execute_steps(runtime.as_ref(), image, std::slice::from_ref(run)).await?;
+                    container::execute_steps(runtime.as_ref(), image, std::slice::from_ref(run))
+                        .await?;
                 } else if let Some(uses) = &step.uses {
                     // Execute action step
                     use crate::actions;

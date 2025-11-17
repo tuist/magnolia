@@ -153,8 +153,7 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
                 }
 
                 // Get the script
-                if let Some(script) = job_map.get(serde_yaml::Value::String("script".to_string()))
-                {
+                if let Some(script) = job_map.get(serde_yaml::Value::String("script".to_string())) {
                     if let Some(script_array) = script.as_sequence() {
                         let commands: Vec<String> = script_array
                             .iter()
