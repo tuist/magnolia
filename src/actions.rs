@@ -399,15 +399,52 @@ pub async fn execute_node_action(
 
     let mut cmd = tokio::process::Command::new("node");
     cmd.arg(&main_file)
-        .current_dir(action_dir);
+        .current_dir(action_dir)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
 
     // Add all GitHub environment variables
     for (key, value) in github_env {
         cmd.env(key, value);
     }
 
-    let status = cmd
-        .status()
+    let mut child = cmd
+        .spawn()
+        .context(format!("Failed to execute Node.js action: {}", main))?;
+
+    // Filter and display output, removing GitHub Actions workflow commands
+    let stdout = child.stdout.take().unwrap();
+    let stderr = child.stderr.take().unwrap();
+
+    let stdout_task = tokio::spawn(async move {
+        use tokio::io::{AsyncBufReadExt, BufReader};
+        let reader = BufReader::new(stdout);
+        let mut lines = reader.lines();
+        while let Ok(Some(line)) = lines.next_line().await {
+            // Filter out GitHub Actions workflow commands
+            if !line.starts_with("::") {
+                println!("    {}", line);
+            }
+        }
+    });
+
+    let stderr_task = tokio::spawn(async move {
+        use tokio::io::{AsyncBufReadExt, BufReader};
+        let reader = BufReader::new(stderr);
+        let mut lines = reader.lines();
+        while let Ok(Some(line)) = lines.next_line().await {
+            // Filter out GitHub Actions workflow commands
+            if !line.starts_with("::") {
+                eprintln!("    {}", line.red());
+            }
+        }
+    });
+
+    // Wait for output tasks
+    let _ = tokio::join!(stdout_task, stderr_task);
+
+    let status = child
+        .wait()
         .await
         .context(format!("Failed to execute Node.js action: {}", main))?;
 
