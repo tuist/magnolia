@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use colored::*;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command as StdCommand;
 
 /// Represents a parsed action reference (e.g., "actions/checkout@v4")
@@ -151,7 +151,7 @@ pub async fn download_action(action_ref: &ActionRef) -> Result<PathBuf> {
 }
 
 /// Load action metadata from action.yml or action.yaml
-pub fn load_action_metadata(action_dir: &PathBuf) -> Result<ActionMetadata> {
+pub fn load_action_metadata(action_dir: &Path) -> Result<ActionMetadata> {
     let yml_path = action_dir.join("action.yml");
     let yaml_path = action_dir.join("action.yaml");
 

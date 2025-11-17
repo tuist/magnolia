@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use colored::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::container;
 
@@ -39,7 +39,8 @@ pub fn get_jobs_from_file(pipeline_path: &PathBuf) -> Result<Vec<String>> {
     Ok(jobs)
 }
 
-pub fn list_jobs(path: &PathBuf) -> Result<()> {
+#[allow(dead_code)]
+pub fn list_jobs(path: &Path) -> Result<()> {
     let workflows_dir = path.join(".github").join("workflows");
 
     if !workflows_dir.exists() || !workflows_dir.is_dir() {
@@ -110,7 +111,7 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
         if let Some(steps) = &job.steps {
             println!("\n{}", "Steps:".cyan());
             for (i, step) in steps.iter().enumerate() {
-                if let Some(run) = &step.run {
+                if let Some(_run) = &step.run {
                     let step_name = step.name.as_deref().unwrap_or("(unnamed)");
                     println!("  {}. {} {}", i + 1, "Run:".green(), step_name);
                 } else if let Some(uses) = &step.uses {
@@ -173,7 +174,7 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
 
                 if let Some(run) = &step.run {
                     // Execute run step
-                    container::execute_steps(runtime.as_ref(), image, &[run.clone()]).await?;
+                    container::execute_steps(runtime.as_ref(), image, std::slice::from_ref(run)).await?;
                 } else if let Some(uses) = &step.uses {
                     // Execute action step
                     use crate::actions;

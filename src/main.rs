@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use colored::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 mod actions;
 mod container;
@@ -35,7 +35,8 @@ impl std::fmt::Display for CISystem {
     }
 }
 
-fn detect_ci_systems(path: &PathBuf) -> Vec<CISystem> {
+#[allow(dead_code)]
+fn detect_ci_systems(path: &Path) -> Vec<CISystem> {
     let mut systems = Vec::new();
 
     // Check for GitLab CI
@@ -66,7 +67,7 @@ fn detect_ci_systems(path: &PathBuf) -> Vec<CISystem> {
     systems
 }
 
-fn discover_pipelines(path: &PathBuf) -> Result<Vec<(String, PathBuf, CISystem)>> {
+fn discover_pipelines(path: &Path) -> Result<Vec<(String, PathBuf, CISystem)>> {
     let mut pipelines = Vec::new();
 
     // Check for GitLab CI
@@ -124,7 +125,7 @@ fn discover_pipelines(path: &PathBuf) -> Result<Vec<(String, PathBuf, CISystem)>
     Ok(pipelines)
 }
 
-fn detect_ci_type(pipeline_path: &PathBuf) -> Result<CISystem> {
+fn detect_ci_type(pipeline_path: &Path) -> Result<CISystem> {
     let filename = pipeline_path
         .file_name()
         .and_then(|n| n.to_str())
