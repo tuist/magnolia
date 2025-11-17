@@ -1,0 +1,24 @@
+name: Test with Actions
+
+on: [push]
+
+jobs:
+  test-actions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run tests
+        run: |
+          echo "Running Forgejo Actions tests..."
+          pwd
+
+  test-container:
+    container: alpine:latest
+    steps:
+      - name: Echo in container
+        run: echo "Hello from Alpine container!"
+
+      - name: List files
+        run: ls -la

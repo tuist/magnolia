@@ -160,9 +160,15 @@ pub async fn execute_steps(
         println!("\n{} Executing on host", "→".cyan());
 
         for (i, cmd) in commands.iter().enumerate() {
-            println!("\n{} {}", format!("[{}/{}]", i + 1, commands.len()).cyan(), cmd.yellow());
+            println!(
+                "\n{} {}",
+                format!("[{}/{}]", i + 1, commands.len()).cyan(),
+                cmd.yellow()
+            );
 
-            execute_on_host(cmd).await.context(format!("Command failed: {}", cmd))?;
+            execute_on_host(cmd)
+                .await
+                .context(format!("Command failed: {}", cmd))?;
 
             println!("{}", "✓ Command succeeded".green());
         }

@@ -2,17 +2,19 @@ use anyhow::{Context, Result};
 use colored::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::container;
 
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(dead_code)]
 struct GitLabCI {
     #[serde(flatten)]
     jobs: HashMap<String, Job>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(dead_code)]
 struct Job {
     #[serde(default)]
     script: Vec<String>,
@@ -32,7 +34,7 @@ pub fn get_jobs_from_file(pipeline_path: &PathBuf) -> Result<Vec<String>> {
     let mut jobs = Vec::new();
 
     if let Some(obj) = ci.as_mapping() {
-        let reserved_keys = vec![
+        let reserved_keys = [
             "stages",
             "variables",
             "default",
@@ -59,7 +61,8 @@ pub fn get_jobs_from_file(pipeline_path: &PathBuf) -> Result<Vec<String>> {
     Ok(jobs)
 }
 
-pub fn list_jobs(path: &PathBuf) -> Result<()> {
+#[allow(dead_code)]
+pub fn list_jobs(path: &Path) -> Result<()> {
     let gitlab_ci_path = path.join(".gitlab-ci.yml");
 
     if !gitlab_ci_path.exists() {
@@ -75,7 +78,7 @@ pub fn list_jobs(path: &PathBuf) -> Result<()> {
     println!("\n{}", "Available jobs:".green().bold());
 
     if let Some(obj) = ci.as_mapping() {
-        let reserved_keys = vec![
+        let reserved_keys = [
             "stages",
             "variables",
             "default",
@@ -94,12 +97,12 @@ pub fn list_jobs(path: &PathBuf) -> Result<()> {
 
                 if let Some(job) = value.as_mapping() {
                     let stage = job
-                        .get(&serde_yaml::Value::String("stage".to_string()))
+                        .get(serde_yaml::Value::String("stage".to_string()))
                         .and_then(|v| v.as_str())
                         .unwrap_or("default");
 
                     let image = job
-                        .get(&serde_yaml::Value::String("image".to_string()))
+                        .get(serde_yaml::Value::String("image".to_string()))
                         .and_then(|v| v.as_str())
                         .unwrap_or("N/A");
 
@@ -127,18 +130,21 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
         .context(format!("Failed to parse {}", pipeline_path.display()))?;
 
     if let Some(obj) = ci.as_mapping() {
-        if let Some(job) = obj.get(&serde_yaml::Value::String(job_name.to_string())) {
+        if let Some(job) = obj.get(serde_yaml::Value::String(job_name.to_string())) {
             if let Some(job_map) = job.as_mapping() {
-                println!("\n{}", format!("▶ Executing job: {}", job_name).green().bold());
+                println!(
+                    "\n{}",
+                    format!("▶ Executing job: {}", job_name).green().bold()
+                );
 
                 // Get job metadata
                 let stage = job_map
-                    .get(&serde_yaml::Value::String("stage".to_string()))
+                    .get(serde_yaml::Value::String("stage".to_string()))
                     .and_then(|v| v.as_str())
                     .unwrap_or("default");
 
                 let image = job_map
-                    .get(&serde_yaml::Value::String("image".to_string()))
+                    .get(serde_yaml::Value::String("image".to_string()))
                     .and_then(|v| v.as_str());
 
                 println!("  Stage: {}", stage.blue());
@@ -147,8 +153,7 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
                 }
 
                 // Get the script
-                if let Some(script) = job_map.get(&serde_yaml::Value::String("script".to_string()))
-                {
+                if let Some(script) = job_map.get(serde_yaml::Value::String("script".to_string())) {
                     if let Some(script_array) = script.as_sequence() {
                         let commands: Vec<String> = script_array
                             .iter()
@@ -191,16 +196,23 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
                             // Combine all commands into a single script for container execution
                             let combined_script = commands.join(" && ");
 
+                            println!("\n{} Executing in container", "→".cyan());
+
+                            container::execute_in_container(
+                                &rt,
+                                img,
+                                &combined_script,
+                                "/workspace",
+                            )
+                            .await
+                            .context("Container execution failed")?;
+
                             println!(
-                                "\n{} Executing in container",
-                                "→".cyan()
+                                "\n{}",
+                                format!("✓ Job '{}' completed successfully", job_name)
+                                    .green()
+                                    .bold()
                             );
-
-                            container::execute_in_container(&rt, img, &combined_script, "/workspace")
-                                .await
-                                .context("Container execution failed")?;
-
-                            println!("\n{}", format!("✓ Job '{}' completed successfully", job_name).green().bold());
                         } else {
                             // Host execution (original behavior)
                             if image.is_some() && runtime.is_none() {
@@ -213,7 +225,11 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
                             println!("\n{} Executing on host", "→".cyan());
 
                             for (i, cmd) in commands.iter().enumerate() {
-                                println!("\n{} {}", format!("[{}/{}]", i + 1, commands.len()).cyan(), cmd.yellow());
+                                println!(
+                                    "\n{} {}",
+                                    format!("[{}/{}]", i + 1, commands.len()).cyan(),
+                                    cmd.yellow()
+                                );
 
                                 let status = tokio::process::Command::new("sh")
                                     .arg("-c")
@@ -224,15 +240,25 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
 
                                 if !status.success() {
                                     let code = status.code().unwrap_or(-1);
-                                    println!("\n{}", format!("✗ Command failed with exit code {}", code).red().bold());
+                                    println!(
+                                        "\n{}",
+                                        format!("✗ Command failed with exit code {}", code)
+                                            .red()
+                                            .bold()
+                                    );
                                     anyhow::bail!("Command failed: {}", cmd);
                                 } else {
-                                    println!("{}", format!("✓ Command succeeded").green());
+                                    println!("{}", "✓ Command succeeded".green());
                                 }
                             }
 
                             println!("\n{}", "─".repeat(60).dimmed());
-                            println!("\n{}", format!("✓ Job '{}' completed successfully", job_name).green().bold());
+                            println!(
+                                "\n{}",
+                                format!("✓ Job '{}' completed successfully", job_name)
+                                    .green()
+                                    .bold()
+                            );
                         }
                     }
                 } else {
