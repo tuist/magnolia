@@ -25,6 +25,7 @@ struct Step {
     name: Option<String>,
     run: Option<String>,
     uses: Option<String>,
+    with: Option<std::collections::HashMap<String, serde_yaml::Value>>,
 }
 
 pub fn get_jobs_from_file(pipeline_path: &PathBuf) -> Result<Vec<String>> {
@@ -163,7 +164,7 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
                 } else if let Some(uses) = &step.uses {
                     // Execute action step
                     use crate::actions;
-                    actions::execute_action(uses).await?;
+                    actions::execute_action(uses, step.with.as_ref()).await?;
                 }
             }
 

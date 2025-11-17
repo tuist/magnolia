@@ -187,11 +187,12 @@ pub fn get_action_type(metadata: &ActionMetadata) -> Result<ActionType> {
 pub async fn execute_composite_action(
     steps: &[CompositeStep],
     action_dir: &PathBuf,
+    inputs: Option<&std::collections::HashMap<String, serde_yaml::Value>>,
 ) -> Result<()> {
     println!("  {} Executing composite action steps", "→".cyan());
 
     // Set up GitHub Actions environment
-    let github_env = setup_github_env();
+    let github_env = setup_github_env(inputs);
 
     for (i, step) in steps.iter().enumerate() {
         let default_name = format!("Step {}", i + 1);
@@ -224,9 +225,9 @@ pub async fn execute_composite_action(
 
             println!("    {}", "✓ Step succeeded".green());
         } else if let Some(uses) = &step.uses {
-            // Nested action - recursively execute
+            // Nested action - recursively execute (no inputs for nested actions)
             println!("    {} Nested action: {}", "→".cyan(), uses.dimmed());
-            Box::pin(execute_action(uses)).await?;
+            Box::pin(execute_action(uses, None)).await?;
         }
     }
 
@@ -283,7 +284,7 @@ pub async fn execute_docker_action(
 }
 
 /// Set up GitHub Actions environment variables
-fn setup_github_env() -> std::collections::HashMap<String, String> {
+fn setup_github_env(inputs: Option<&std::collections::HashMap<String, serde_yaml::Value>>) -> std::collections::HashMap<String, String> {
     let mut env = std::collections::HashMap::new();
 
     // Get current directory as workspace
@@ -343,6 +344,25 @@ fn setup_github_env() -> std::collections::HashMap<String, String> {
     // CI indicator
     env.insert("CI".to_string(), "true".to_string());
 
+    // Add action inputs as INPUT_* environment variables
+    if let Some(inputs) = inputs {
+        for (key, value) in inputs {
+            let env_key = format!("INPUT_{}", key.to_uppercase().replace('-', "_"));
+            let env_value = match value {
+                serde_yaml::Value::String(s) => s.clone(),
+                serde_yaml::Value::Number(n) => n.to_string(),
+                serde_yaml::Value::Bool(b) => b.to_string(),
+                _ => serde_yaml::to_string(value).unwrap_or_default(),
+            };
+            env.insert(env_key, env_value);
+        }
+    }
+
+    // Provide a default token if not supplied (for actions that require it)
+    if !env.contains_key("INPUT_TOKEN") {
+        env.insert("INPUT_TOKEN".to_string(), "".to_string());
+    }
+
     env
 }
 
@@ -351,6 +371,7 @@ pub async fn execute_node_action(
     main: &str,
     action_dir: &PathBuf,
     node_version: &str,
+    inputs: Option<&std::collections::HashMap<String, serde_yaml::Value>>,
 ) -> Result<()> {
     println!("  {} Executing Node.js action: {}", "→".cyan(), main.yellow());
 
@@ -373,7 +394,7 @@ pub async fn execute_node_action(
     }
 
     // Set up GitHub Actions environment
-    let github_env = setup_github_env();
+    let github_env = setup_github_env(inputs);
 
     let mut cmd = tokio::process::Command::new("node");
     cmd.arg(&main_file)
@@ -400,7 +421,10 @@ pub async fn execute_node_action(
 }
 
 /// Main entry point: execute any action by reference
-pub async fn execute_action(action_ref: &str) -> Result<()> {
+pub async fn execute_action(
+    action_ref: &str,
+    inputs: Option<&std::collections::HashMap<String, serde_yaml::Value>>,
+) -> Result<()> {
     let action = ActionRef::parse(action_ref)?;
 
     // Download action (or use cached)
@@ -416,7 +440,7 @@ pub async fn execute_action(action_ref: &str) -> Result<()> {
     match action_type {
         ActionType::Composite => {
             if let ActionRuns::Composite { steps, .. } = metadata.runs {
-                execute_composite_action(&steps, &action_dir).await?;
+                execute_composite_action(&steps, &action_dir, inputs).await?;
             }
         }
         ActionType::Docker { image } => {
@@ -426,10 +450,10 @@ pub async fn execute_action(action_ref: &str) -> Result<()> {
             execute_docker_action(&image, &action_dir, &runtime).await?;
         }
         ActionType::Node20 { main } => {
-            execute_node_action(&main, &action_dir, "20").await?;
+            execute_node_action(&main, &action_dir, "20", inputs).await?;
         }
         ActionType::Node16 { main } => {
-            execute_node_action(&main, &action_dir, "16").await?;
+            execute_node_action(&main, &action_dir, "16", inputs).await?;
         }
     }
 
