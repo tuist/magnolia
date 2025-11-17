@@ -283,6 +283,66 @@ pub async fn execute_docker_action(
     Ok(())
 }
 
+/// Get GitHub token from environment, gh CLI, or git credentials
+fn get_github_token() -> String {
+    // Try GITHUB_TOKEN environment variable first
+    if let Ok(token) = std::env::var("GITHUB_TOKEN") {
+        if !token.is_empty() {
+            println!("  {} Using GITHUB_TOKEN from environment", "→".cyan());
+            return token;
+        }
+    }
+
+    // Try to get token from gh CLI
+    if let Ok(output) = StdCommand::new("gh")
+        .args(["auth", "token"])
+        .output()
+    {
+        if output.status.success() {
+            if let Ok(token) = String::from_utf8(output.stdout) {
+                let token = token.trim().to_string();
+                if !token.is_empty() {
+                    println!("  {} Using GitHub token from gh CLI", "→".cyan());
+                    return token;
+                }
+            }
+        }
+    }
+
+    // Try to get credentials from git credential helper
+    if let Ok(mut child) = StdCommand::new("git")
+        .args(["credential", "fill"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+    {
+        if let Some(mut stdin) = child.stdin.take() {
+            use std::io::Write;
+            let _ = stdin.write_all(b"protocol=https\nhost=github.com\n\n");
+        }
+
+        if let Ok(output) = child.wait_with_output() {
+            if output.status.success() {
+                if let Ok(credentials) = String::from_utf8(output.stdout) {
+                    // Parse the credential output for password (which is the token)
+                    for line in credentials.lines() {
+                        if let Some(token) = line.strip_prefix("password=") {
+                            if !token.is_empty() {
+                                println!("  {} Using GitHub credentials from git", "→".cyan());
+                                return token.to_string();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // No token available - use empty for local-only operations
+    println!("  {} No GitHub token found (set GITHUB_TOKEN or use 'gh auth login')", "⚠".yellow());
+    "".to_string()
+}
+
 /// Set up GitHub Actions environment variables
 fn setup_github_env(inputs: Option<&std::collections::HashMap<String, serde_yaml::Value>>) -> std::collections::HashMap<String, String> {
     let mut env = std::collections::HashMap::new();
@@ -358,10 +418,11 @@ fn setup_github_env(inputs: Option<&std::collections::HashMap<String, serde_yaml
         }
     }
 
-    // Provide a default token if not supplied (for actions that require it)
-    // Use a dummy token for local execution - many actions like checkout require this
+    // Provide a token if not supplied
+    // Try to use real credentials for GitHub authentication
     if !env.contains_key("INPUT_TOKEN") {
-        env.insert("INPUT_TOKEN".to_string(), "local-magnolia-token".to_string());
+        let token = get_github_token();
+        env.insert("INPUT_TOKEN".to_string(), token);
     }
 
     env
