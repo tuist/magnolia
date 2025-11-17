@@ -138,7 +138,10 @@ fn detect_ci_type(pipeline_path: &PathBuf) -> Result<CISystem> {
     if let Some(parent) = pipeline_path.parent() {
         if let Some(grandparent) = parent.parent() {
             let parent_name = parent.file_name().and_then(|n| n.to_str()).unwrap_or("");
-            let grandparent_name = grandparent.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            let grandparent_name = grandparent
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("");
 
             if parent_name == "workflows" {
                 if grandparent_name == ".github" {
@@ -181,7 +184,8 @@ async fn main() -> Result<()> {
             return Ok(());
         }
 
-        let pipeline_options: Vec<String> = pipelines.iter().map(|(name, _, _)| name.clone()).collect();
+        let pipeline_options: Vec<String> =
+            pipelines.iter().map(|(name, _, _)| name.clone()).collect();
 
         let selected_idx = inquire::Select::new("Select a pipeline:", pipeline_options)
             .prompt()

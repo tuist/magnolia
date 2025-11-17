@@ -99,7 +99,10 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
         .context(format!("Failed to parse {}", pipeline_path.display()))?;
 
     if let Some(job) = workflow.jobs.get(job_name) {
-        println!("\n{}", format!("▶ Executing job: {}", job_name).green().bold());
+        println!(
+            "\n{}",
+            format!("▶ Executing job: {}", job_name).green().bold()
+        );
 
         let runs_on = job.runs_on.as_deref().unwrap_or("ubuntu-latest");
         println!("  Runs on: {}", runs_on.blue());
@@ -112,7 +115,13 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
                     println!("  {}. {} {}", i + 1, "Run:".green(), step_name);
                 } else if let Some(uses) = &step.uses {
                     let step_name = step.name.as_deref().unwrap_or("(unnamed)");
-                    println!("  {}. {} {} - {}", i + 1, "Uses:".blue(), uses.dimmed(), step_name);
+                    println!(
+                        "  {}. {} {} - {}",
+                        i + 1,
+                        "Uses:".blue(),
+                        uses.dimmed(),
+                        step_name
+                    );
                 }
             }
 
@@ -156,7 +165,11 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
             for (i, step) in steps.iter().enumerate() {
                 let default_name = format!("Step {}", i + 1);
                 let step_name = step.name.as_deref().unwrap_or(&default_name);
-                println!("\n{} {}", format!("[{}/{}]", i + 1, steps.len()).cyan(), step_name.yellow());
+                println!(
+                    "\n{} {}",
+                    format!("[{}/{}]", i + 1, steps.len()).cyan(),
+                    step_name.yellow()
+                );
 
                 if let Some(run) = &step.run {
                     // Execute run step
@@ -169,7 +182,12 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
             }
 
             println!("\n{}", "─".repeat(60).dimmed());
-            println!("\n{}", format!("✓ Job '{}' completed successfully", job_name).green().bold());
+            println!(
+                "\n{}",
+                format!("✓ Job '{}' completed successfully", job_name)
+                    .green()
+                    .bold()
+            );
 
             return Ok(());
         } else {

@@ -129,7 +129,10 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
     if let Some(obj) = ci.as_mapping() {
         if let Some(job) = obj.get(&serde_yaml::Value::String(job_name.to_string())) {
             if let Some(job_map) = job.as_mapping() {
-                println!("\n{}", format!("▶ Executing job: {}", job_name).green().bold());
+                println!(
+                    "\n{}",
+                    format!("▶ Executing job: {}", job_name).green().bold()
+                );
 
                 // Get job metadata
                 let stage = job_map
@@ -191,16 +194,23 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
                             // Combine all commands into a single script for container execution
                             let combined_script = commands.join(" && ");
 
+                            println!("\n{} Executing in container", "→".cyan());
+
+                            container::execute_in_container(
+                                &rt,
+                                img,
+                                &combined_script,
+                                "/workspace",
+                            )
+                            .await
+                            .context("Container execution failed")?;
+
                             println!(
-                                "\n{} Executing in container",
-                                "→".cyan()
+                                "\n{}",
+                                format!("✓ Job '{}' completed successfully", job_name)
+                                    .green()
+                                    .bold()
                             );
-
-                            container::execute_in_container(&rt, img, &combined_script, "/workspace")
-                                .await
-                                .context("Container execution failed")?;
-
-                            println!("\n{}", format!("✓ Job '{}' completed successfully", job_name).green().bold());
                         } else {
                             // Host execution (original behavior)
                             if image.is_some() && runtime.is_none() {
@@ -213,7 +223,11 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
                             println!("\n{} Executing on host", "→".cyan());
 
                             for (i, cmd) in commands.iter().enumerate() {
-                                println!("\n{} {}", format!("[{}/{}]", i + 1, commands.len()).cyan(), cmd.yellow());
+                                println!(
+                                    "\n{} {}",
+                                    format!("[{}/{}]", i + 1, commands.len()).cyan(),
+                                    cmd.yellow()
+                                );
 
                                 let status = tokio::process::Command::new("sh")
                                     .arg("-c")
@@ -224,7 +238,12 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
 
                                 if !status.success() {
                                     let code = status.code().unwrap_or(-1);
-                                    println!("\n{}", format!("✗ Command failed with exit code {}", code).red().bold());
+                                    println!(
+                                        "\n{}",
+                                        format!("✗ Command failed with exit code {}", code)
+                                            .red()
+                                            .bold()
+                                    );
                                     anyhow::bail!("Command failed: {}", cmd);
                                 } else {
                                     println!("{}", format!("✓ Command succeeded").green());
@@ -232,7 +251,12 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
                             }
 
                             println!("\n{}", "─".repeat(60).dimmed());
-                            println!("\n{}", format!("✓ Job '{}' completed successfully", job_name).green().bold());
+                            println!(
+                                "\n{}",
+                                format!("✓ Job '{}' completed successfully", job_name)
+                                    .green()
+                                    .bold()
+                            );
                         }
                     }
                 } else {

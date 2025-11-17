@@ -17,12 +17,18 @@ impl ActionRef {
     pub fn parse(action_ref: &str) -> Result<Self> {
         let parts: Vec<&str> = action_ref.split('@').collect();
         if parts.len() != 2 {
-            anyhow::bail!("Invalid action reference: {}. Expected format: owner/repo@ref", action_ref);
+            anyhow::bail!(
+                "Invalid action reference: {}. Expected format: owner/repo@ref",
+                action_ref
+            );
         }
 
         let repo_parts: Vec<&str> = parts[0].split('/').collect();
         if repo_parts.len() != 2 {
-            anyhow::bail!("Invalid action repository: {}. Expected format: owner/repo", parts[0]);
+            anyhow::bail!(
+                "Invalid action repository: {}. Expected format: owner/repo",
+                parts[0]
+            );
         }
 
         Ok(ActionRef {
@@ -119,8 +125,10 @@ pub async fn download_action(action_ref: &ActionRef) -> Result<PathBuf> {
     );
 
     // Create cache directory
-    std::fs::create_dir_all(&cache_dir)
-        .context(format!("Failed to create cache directory: {}", cache_dir.display()))?;
+    std::fs::create_dir_all(&cache_dir).context(format!(
+        "Failed to create cache directory: {}",
+        cache_dir.display()
+    ))?;
 
     // Clone the repository
     let status = tokio::process::Command::new("git")
@@ -152,7 +160,10 @@ pub fn load_action_metadata(action_dir: &PathBuf) -> Result<ActionMetadata> {
     } else if yaml_path.exists() {
         yaml_path
     } else {
-        anyhow::bail!("No action.yml or action.yaml found in {}", action_dir.display());
+        anyhow::bail!(
+            "No action.yml or action.yaml found in {}",
+            action_dir.display()
+        );
     };
 
     let content = std::fs::read_to_string(&metadata_path)
@@ -167,12 +178,10 @@ pub fn load_action_metadata(action_dir: &PathBuf) -> Result<ActionMetadata> {
 /// Determine the action type from metadata
 pub fn get_action_type(metadata: &ActionMetadata) -> Result<ActionType> {
     match &metadata.runs {
-        ActionRuns::Composite { using, .. } if using == "composite" => {
-            Ok(ActionType::Composite)
-        }
-        ActionRuns::Docker { using, image } if using == "docker" => {
-            Ok(ActionType::Docker { image: image.clone() })
-        }
+        ActionRuns::Composite { using, .. } if using == "composite" => Ok(ActionType::Composite),
+        ActionRuns::Docker { using, image } if using == "docker" => Ok(ActionType::Docker {
+            image: image.clone(),
+        }),
         ActionRuns::Node { using, main } if using == "node20" => {
             Ok(ActionType::Node20 { main: main.clone() })
         }
@@ -197,16 +206,18 @@ pub async fn execute_composite_action(
     for (i, step) in steps.iter().enumerate() {
         let default_name = format!("Step {}", i + 1);
         let step_name = step.name.as_deref().unwrap_or(&default_name);
-        println!("\n  {} {}", format!("[{}/{}]", i + 1, steps.len()).cyan(), step_name.yellow());
+        println!(
+            "\n  {} {}",
+            format!("[{}/{}]", i + 1, steps.len()).cyan(),
+            step_name.yellow()
+        );
 
         if let Some(run) = &step.run {
             // Execute the run command
             let shell = step.shell.as_deref().unwrap_or("sh");
 
             let mut cmd = tokio::process::Command::new(shell);
-            cmd.arg("-c")
-                .arg(run)
-                .current_dir(action_dir);
+            cmd.arg("-c").arg(run).current_dir(action_dir);
 
             // Add GitHub environment variables
             for (key, value) in &github_env {
@@ -220,7 +231,11 @@ pub async fn execute_composite_action(
 
             if !status.success() {
                 let code = status.code().unwrap_or(-1);
-                anyhow::bail!("Composite step '{}' failed with exit code {}", step_name, code);
+                anyhow::bail!(
+                    "Composite step '{}' failed with exit code {}",
+                    step_name,
+                    code
+                );
             }
 
             println!("    {}", "✓ Step succeeded".green());
@@ -240,13 +255,21 @@ pub async fn execute_docker_action(
     action_dir: &PathBuf,
     runtime: &crate::container::ContainerRuntime,
 ) -> Result<()> {
-    println!("  {} Executing Docker action with image: {}", "→".cyan(), image.yellow());
+    println!(
+        "  {} Executing Docker action with image: {}",
+        "→".cyan(),
+        image.yellow()
+    );
 
     // Resolve image path (could be Dockerfile or image name)
     let resolved_image = if image.starts_with("Dockerfile") || image.starts_with("./") {
         // Build the Docker image from Dockerfile
         let dockerfile_path = action_dir.join(image);
-        println!("    {} Building Docker image from {}", "→".cyan(), dockerfile_path.display());
+        println!(
+            "    {} Building Docker image from {}",
+            "→".cyan(),
+            dockerfile_path.display()
+        );
 
         // Generate a tag for the built image
         let tag = format!("magnolia-action-{}", uuid::Uuid::new_v4());
@@ -263,7 +286,10 @@ pub async fn execute_docker_action(
             .context("Failed to build Docker image")?;
 
         if !status.success() {
-            anyhow::bail!("Failed to build Docker image from {}", dockerfile_path.display());
+            anyhow::bail!(
+                "Failed to build Docker image from {}",
+                dockerfile_path.display()
+            );
         }
 
         tag
@@ -294,10 +320,7 @@ fn get_github_token() -> String {
     }
 
     // Try to get token from gh CLI
-    if let Ok(output) = StdCommand::new("gh")
-        .args(["auth", "token"])
-        .output()
-    {
+    if let Ok(output) = StdCommand::new("gh").args(["auth", "token"]).output() {
         if output.status.success() {
             if let Ok(token) = String::from_utf8(output.stdout) {
                 let token = token.trim().to_string();
@@ -339,12 +362,17 @@ fn get_github_token() -> String {
     }
 
     // No token available - use empty for local-only operations
-    println!("  {} No GitHub token found (set GITHUB_TOKEN or use 'gh auth login')", "⚠".yellow());
+    println!(
+        "  {} No GitHub token found (set GITHUB_TOKEN or use 'gh auth login')",
+        "⚠".yellow()
+    );
     "".to_string()
 }
 
 /// Set up GitHub Actions environment variables
-fn setup_github_env(inputs: Option<&std::collections::HashMap<String, serde_yaml::Value>>) -> std::collections::HashMap<String, String> {
+fn setup_github_env(
+    inputs: Option<&std::collections::HashMap<String, serde_yaml::Value>>,
+) -> std::collections::HashMap<String, String> {
     let mut env = std::collections::HashMap::new();
 
     // Get current directory as workspace
@@ -396,10 +424,21 @@ fn setup_github_env(inputs: Option<&std::collections::HashMap<String, serde_yaml
 
     // Runner environment
     env.insert("RUNNER_OS".to_string(), std::env::consts::OS.to_string());
-    env.insert("RUNNER_ARCH".to_string(), std::env::consts::ARCH.to_string());
-    env.insert("RUNNER_TEMP".to_string(), std::env::temp_dir().to_string_lossy().to_string());
-    env.insert("RUNNER_TOOL_CACHE".to_string(), format!("{}/.magnolia/tool-cache",
-        std::env::var("HOME").unwrap_or_else(|_| ".".to_string())));
+    env.insert(
+        "RUNNER_ARCH".to_string(),
+        std::env::consts::ARCH.to_string(),
+    );
+    env.insert(
+        "RUNNER_TEMP".to_string(),
+        std::env::temp_dir().to_string_lossy().to_string(),
+    );
+    env.insert(
+        "RUNNER_TOOL_CACHE".to_string(),
+        format!(
+            "{}/.magnolia/tool-cache",
+            std::env::var("HOME").unwrap_or_else(|_| ".".to_string())
+        ),
+    );
 
     // CI indicator
     env.insert("CI".to_string(), "true".to_string());
@@ -435,7 +474,11 @@ pub async fn execute_node_action(
     node_version: &str,
     inputs: Option<&std::collections::HashMap<String, serde_yaml::Value>>,
 ) -> Result<()> {
-    println!("  {} Executing Node.js action: {}", "→".cyan(), main.yellow());
+    println!(
+        "  {} Executing Node.js action: {}",
+        "→".cyan(),
+        main.yellow()
+    );
 
     // Check if node is available
     let node_check = tokio::process::Command::new("node")
@@ -544,7 +587,8 @@ pub async fn execute_action(
         }
         ActionType::Docker { image } => {
             // Detect container runtime
-            let runtime = crate::container::detect_runtime().await
+            let runtime = crate::container::detect_runtime()
+                .await
                 .context("Docker actions require Podman or Docker to be installed")?;
             execute_docker_action(&image, &action_dir, &runtime).await?;
         }
