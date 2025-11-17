@@ -359,8 +359,9 @@ fn setup_github_env(inputs: Option<&std::collections::HashMap<String, serde_yaml
     }
 
     // Provide a default token if not supplied (for actions that require it)
+    // Use a dummy token for local execution - many actions like checkout require this
     if !env.contains_key("INPUT_TOKEN") {
-        env.insert("INPUT_TOKEN".to_string(), "".to_string());
+        env.insert("INPUT_TOKEN".to_string(), "local-magnolia-token".to_string());
     }
 
     env
