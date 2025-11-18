@@ -1,0 +1,40 @@
+---
+format_version: '13'
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+project_type: other
+
+workflows:
+  build:
+    description: Simple build workflow
+    steps:
+    - git-clone@8: {}
+    - script@1:
+        title: Install dependencies
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+            echo "Installing dependencies..."
+            npm install
+    - script@1:
+        title: Run tests
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+            echo "Running tests..."
+            npm test
+    - script@1:
+        title: Build application
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+            echo "Building application..."
+            npm run build
+
+app:
+  envs:
+  - opts:
+      is_expand: false
+    NODE_ENV: production

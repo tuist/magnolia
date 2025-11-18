@@ -66,7 +66,13 @@ impl AgentClient {
     /// Create a new agent client with auto-detection
     pub fn new() -> Result<Self> {
         let cli = AgentCli::detect()
-            .context("No agent CLI found. Please install 'claude' or 'codex' CLI.")?;
+            .context(
+                "No agent CLI found. The migration feature requires either 'claude' or 'codex' CLI to be installed.\n\n\
+                Install options:\n\
+                  - Claude CLI: https://github.com/anthropics/claude-code\n\
+                  - Codex CLI: https://zed.dev/docs/assistant/commands\n\n\
+                Alternatively, you can manually migrate your CI configuration by consulting the documentation for both systems."
+            )?;
         Ok(Self { cli })
     }
 
