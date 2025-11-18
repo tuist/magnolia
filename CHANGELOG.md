@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2025-11-18
+
+### 🎨 Styling
+
+- Fix formatting ([891c217](891c2170503cf887e7b9c4b39bb1c7e93ad965c4))
+
+### 🐛 Bug Fixes
+
+- Use correct Claude CLI interface for agent execution ([1e70849](1e708496db4b738ea50aa43f9c988ae3aefd8531))
+- Resolve clippy warnings and format code ([35becae](35becaec66e8c1ea358e457365f1afbe28348fd3))
+
+### 📚 Documentation
+
+- Add migration testing guide to fixtures directory ([76babdb](76babdb653a051ee7bc96629fc30a591a9ccf637))
+- Add quick test guide for migration feature ([2858184](28581849c73656e4cdddc45de72435cd5eb51dea))
+- Add comprehensive usage examples to README ([fc35949](fc3594941e4e95ab8705125ca19e57841b861c51))
+
+### 🚀 Features
+
+- Add intelligent CI pipeline migration command ([39d62e5](39d62e55e85530842687c33c8d19dfe7b3cea85d))
+- Improve agent CLI error message and add test directory ([c5d3090](c5d3090c9b71648f2dfffb24e6c2d9f31b48cef4))
+- Add support for AppCircle and Buildkite CI providers ([c1d5416](c1d5416ee593222e38638ce2337540f398ace0cf))
+- Add progress indicators during migration ([c9a753d](c9a753dac591e857217e28f7a6fb63eb9aab6f56))
+
 ## [0.5.1] - 2025-11-18
 
 ### 📦 Dependency Updates
