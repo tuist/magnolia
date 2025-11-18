@@ -57,26 +57,9 @@ The project uses `git-cliff` for changelog generation and semantic versioning. T
 3. Test: `mise exec -- cargo test`
 4. Run locally: `mise exec -- cargo run -- <command>`
 
-## Feature Roadmap
+## Feature Development
 
-See [PLAN.md](PLAN.md) for the complete feature roadmap and implementation priorities.
-
-### Recently Implemented
-
-- **Matrix Strategies** (v0.3.0+): Full support for `strategy.matrix` with multi-dimensional expansion, interpolation, and fail-fast/max-parallel options
-
-### High Priority (Next)
-
-1. **Environment Variables**: Support for `env` at workflow/job/step levels with interpolation
-2. **Caching**: Support for `actions/cache` and related actions
-3. **Job Dependencies**: `needs` keyword with dependency graph resolution
-4. **Conditional Execution**: `if` conditions on jobs and steps
-5. **Context Expressions**: Full `${{ }}` expression evaluation
-
-### In Progress
-
-- Container-based execution (Docker/Podman support implemented)
-- GitHub Actions parsing and execution (basic support implemented)
+For the complete feature roadmap, implementation priorities, and detailed technical specifications, see [PLAN.md](PLAN.md).
 
 ## Testing the CLI
 
