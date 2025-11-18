@@ -13,7 +13,12 @@ Magnolia is a Rust CLI tool that enables developers to run GitLab CI, GitHub Act
 2. **CI System Modules**:
    - `src/gitlab.rs`: Parses and executes GitLab CI pipelines (.gitlab-ci.yml)
    - `src/github.rs`: Parses and executes GitHub Actions workflows (.github/workflows/*.yml)
+     - Supports matrix strategy expansion (v0.3.0+)
+     - Matrix interpolation in runs-on, step names, and commands
+     - Support for fail-fast and max-parallel options
    - `src/forgejo.rs`: Parses and executes Forgejo/Gitea Actions workflows (.forgejo/workflows/*.yml or .gitea/workflows/*.yml)
+   - `src/container.rs`: Container runtime detection and execution (Docker/Podman)
+   - `src/actions.rs`: GitHub Actions execution support
 
 ### Commands
 
@@ -52,15 +57,9 @@ The project uses `git-cliff` for changelog generation and semantic versioning. T
 3. Test: `mise exec -- cargo test`
 4. Run locally: `mise exec -- cargo run -- <command>`
 
-## Future Enhancements
+## Feature Development
 
-- Actual job execution (currently in simulation mode)
-- Docker container support for isolated execution
-- Environment variable handling
-- Secret management
-- Parallel job execution
-- Job dependency resolution
-- Cache support
+For the complete feature roadmap, implementation priorities, and detailed technical specifications, see [PLAN.md](PLAN.md).
 
 ## Testing the CLI
 
