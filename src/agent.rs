@@ -83,16 +83,33 @@ impl AgentClient {
 
     /// Execute a task using the agent
     pub async fn execute(&self, task: AgentTask) -> Result<AgentResponse> {
-        let task_json = serde_json::to_string(&task)
-            .context("Failed to serialize task")?;
+        // Build the full prompt with context if provided
+        let full_prompt = if let Some(context) = &task.context {
+            format!("{}\n\n{}", context, task.prompt)
+        } else {
+            task.prompt.clone()
+        };
 
-        let output = tokio::process::Command::new(self.cli.command_name())
-            .arg("task")
-            .arg("--json")
-            .arg(&task_json)
-            .output()
-            .await
-            .context(format!("Failed to execute {} CLI", self.cli.command_name()))?;
+        let output = match self.cli {
+            AgentCli::Claude => {
+                // Use Claude CLI with --print for non-interactive mode
+                tokio::process::Command::new("claude")
+                    .arg("--print")
+                    .arg(&full_prompt)
+                    .output()
+                    .await
+                    .context("Failed to execute claude CLI")?
+            }
+            AgentCli::Codex => {
+                // Use Codex CLI (assuming similar interface)
+                tokio::process::Command::new("codex")
+                    .arg("--print")
+                    .arg(&full_prompt)
+                    .output()
+                    .await
+                    .context("Failed to execute codex CLI")?
+            }
+        };
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -102,10 +119,14 @@ impl AgentClient {
             );
         }
 
-        let response: AgentResponse = serde_json::from_slice(&output.stdout)
-            .context("Failed to parse agent response")?;
+        let output_text = String::from_utf8_lossy(&output.stdout).to_string();
 
-        Ok(response)
+        // Return a simplified response
+        Ok(AgentResponse {
+            success: true,
+            output: output_text,
+            error: None,
+        })
     }
 
     /// Execute a migration task with full context
@@ -117,22 +138,25 @@ impl AgentClient {
         git_context: &str,
     ) -> Result<String> {
         let prompt = format!(
-            "Migrate the following {} CI configuration to {}. \
-            Analyze the source configuration, research documentation for both CI systems, \
-            and generate an equivalent configuration for the target system.\n\n\
-            Source Configuration:\n{}\n\n\
-            Git Context:\n{}",
-            source_ci, target_ci, source_config, git_context
+            "You are a CI/CD migration expert. Migrate the following {} CI configuration to {}.\n\n\
+            IMPORTANT: Your response must contain ONLY the complete {} configuration file in YAML format. \
+            Do not include any explanations, markdown code blocks, or additional text - just the raw YAML.\n\n\
+            Requirements:\n\
+            - Preserve all workflows, jobs, and steps from the source configuration\n\
+            - Map environment variables correctly\n\
+            - Convert caching mechanisms to {} equivalents\n\
+            - Maintain the same execution order and dependencies\n\
+            - Use appropriate {} syntax and best practices\n\n\
+            Source {} Configuration:\n\
+            ```yaml\n{}\n```\n\n\
+            Git Context:\n{}\n\n\
+            Output ONLY the {} YAML configuration:",
+            source_ci, target_ci, target_ci, target_ci, target_ci, source_ci, source_config, git_context, target_ci
         );
 
         let task = AgentTask {
             prompt,
-            context: Some(format!(
-                "You are migrating from {} to {}. \
-                Focus on finding equivalent features and preserving the intent of the original pipeline. \
-                If a feature doesn't have a direct equivalent, suggest the closest alternative.",
-                source_ci, target_ci
-            )),
+            context: None, // Context is now in the main prompt
         };
 
         let response = self.execute(task).await?;
@@ -144,7 +168,21 @@ impl AgentClient {
             );
         }
 
-        Ok(response.output)
+        // Clean up the response - remove markdown code blocks if present
+        let cleaned = response.output.trim();
+        let cleaned = if cleaned.starts_with("```yaml") || cleaned.starts_with("```") {
+            // Remove markdown code fences
+            cleaned
+                .lines()
+                .skip(1) // Skip opening ```
+                .take_while(|line| !line.starts_with("```")) // Stop at closing ```
+                .collect::<Vec<_>>()
+                .join("\n")
+        } else {
+            cleaned.to_string()
+        };
+
+        Ok(cleaned)
     }
 
     /// Research CI system documentation
