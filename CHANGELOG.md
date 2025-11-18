@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.1] - 2025-11-18
+
+### 📦 Dependency Updates
+
+- **(deps)** Update rust crate clap to v4.5.52 ([f4c6d45](f4c6d452a32538f3abeb05d95958c3fa3fb62ee7))
+- **(deps)** Update actions/setup-node action to v6 ([3913301](39133014430521163a41cf997f38e58d679b545b))
+
 ## [0.5.0] - 2025-11-18
 
 ### 🐛 Bug Fixes
