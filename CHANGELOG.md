@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2025-11-18
+
+### 🐛 Bug Fixes
+
+- **(deps)** Update rust crate inquire to 0.9 ([549d4d3](549d4d37495c998970a434b4829be3af34f92dbe))
+
+### 📚 Documentation
+
+- Simplify CLAUDE.md to only reference PLAN.md ([68b0d89](68b0d89c9bdc76abb880af53bd03c7d653566c7e))
+
+### 📦 Dependency Updates
+
+- **(deps)** Update actions/checkout action to v5 ([c441408](c4414082fd275df95fcfb1da147a632b43bca92f))
+
+### 🚀 Features
+
+- Add matrix strategy support for GitHub Actions ([9053e22](9053e220ea683c8a27654db08443c322b7eb92cc))
+
 ## [0.4.0] - 2025-11-17
 
 ### 🎨 Styling
