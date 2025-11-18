@@ -1,21 +1,53 @@
 use anyhow::Result;
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use colored::*;
 use std::path::{Path, PathBuf};
 
 mod actions;
+mod agent;
 mod container;
 mod forgejo;
 mod github;
 mod gitlab;
+mod migrate;
 
 #[derive(Parser)]
 #[command(name = "magnolia")]
 #[command(about = "Run GitLab, GitHub, and Forgejo pipelines locally", long_about = None)]
 struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+
     /// Path to a specific pipeline file (e.g., .gitlab-ci.yml, .github/workflows/test.yml)
     /// If not provided, will detect and prompt for available pipelines
     pipeline: Option<PathBuf>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Migrate CI pipelines from external providers to Git forge CI systems
+    Migrate {
+        /// Source CI system to migrate from (e.g., bitrise, codemagic, circleci)
+        /// If not specified, will auto-detect from repository
+        source: Option<String>,
+
+        /// Target CI system to migrate to (github, gitlab, forgejo)
+        /// If not specified, will auto-detect from git remote origin
+        #[arg(long)]
+        to: Option<String>,
+
+        /// Skip verification by running the migrated pipeline locally
+        #[arg(long)]
+        no_verify: bool,
+
+        /// Preview the migration without writing files
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Path to repository (defaults to current directory)
+        #[arg(long, default_value = ".")]
+        path: PathBuf,
+    },
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -160,10 +192,53 @@ fn detect_ci_type(pipeline_path: &Path) -> Result<CISystem> {
     )
 }
 
+fn parse_target_ci(target: &str) -> Result<migrate::CISystem> {
+    match target.to_lowercase().as_str() {
+        "github" => Ok(migrate::CISystem::GitHubActions),
+        "gitlab" => Ok(migrate::CISystem::GitLabCI),
+        "forgejo" | "gitea" => Ok(migrate::CISystem::ForgejoActions),
+        _ => anyhow::bail!(
+            "Unknown target CI system: {}. Valid options: github, gitlab, forgejo",
+            target
+        ),
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
+    // Handle subcommands
+    if let Some(command) = cli.command {
+        match command {
+            Commands::Migrate {
+                source,
+                to,
+                no_verify,
+                dry_run,
+                path,
+            } => {
+                // Parse target CI system if provided
+                let target = if let Some(target_str) = to {
+                    Some(parse_target_ci(&target_str)?)
+                } else {
+                    None
+                };
+
+                let options = migrate::MigrationOptions {
+                    source,
+                    target,
+                    verify: !no_verify,
+                    dry_run,
+                    path,
+                };
+
+                return migrate::migrate(options).await;
+            }
+        }
+    }
+
+    // Original behavior: run a pipeline
     let (pipeline_path, ci_system) = if let Some(path) = cli.pipeline {
         // Direct pipeline file specified
         if !path.exists() {

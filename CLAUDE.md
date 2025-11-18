@@ -8,7 +8,7 @@ Magnolia is a Rust CLI tool that enables developers to run GitLab CI, GitHub Act
 
 ### Core Components
 
-1. **Main CLI (`src/main.rs`)**: Entry point that handles command parsing using `clap` and dispatches to appropriate CI system handlers.
+1. **Main CLI (`src/main.rs`)**: Entry point that handles command parsing using `clap` with subcommands and dispatches to appropriate handlers.
 
 2. **CI System Modules**:
    - `src/gitlab.rs`: Parses and executes GitLab CI pipelines (.gitlab-ci.yml)
@@ -20,11 +20,26 @@ Magnolia is a Rust CLI tool that enables developers to run GitLab CI, GitHub Act
    - `src/container.rs`: Container runtime detection and execution (Docker/Podman)
    - `src/actions.rs`: GitHub Actions execution support
 
+3. **Migration System** (v0.4.0+):
+   - `src/migrate.rs`: CI pipeline migration orchestration
+     - Auto-detects source CI configurations (Bitrise, Codemagic, CircleCI)
+     - Auto-detects target CI from git remote origin
+     - Supports interactive selection when multiple sources found
+     - Implements verification via local pipeline execution
+   - `src/agent.rs`: Agentic client protocol implementation
+     - Auto-detects `claude` or `codex` CLI
+     - MCP-based communication protocol
+     - Hybrid agent delegation model (main, documentation, parser, validator agents)
+     - Task delegation with context passing
+
 ### Commands
 
-- `detect`: Auto-detects which CI systems are configured in the current repository
-- `list`: Lists all available jobs/workflows in the repository
-- `run <job>`: Executes a specific job locally (simulation mode for now)
+- `magnolia [pipeline]`: Run a pipeline locally (interactive mode if no path specified)
+- `magnolia migrate [source]`: Migrate CI pipeline from external providers
+  - `--to <target>`: Override target CI system (github, gitlab, forgejo)
+  - `--no-verify`: Skip verification by running migrated pipeline locally
+  - `--dry-run`: Preview migration without writing files
+  - `--path <path>`: Path to repository (defaults to current directory)
 
 ### Dependencies
 
@@ -63,12 +78,26 @@ For the complete feature roadmap, implementation priorities, and detailed techni
 
 ## Testing the CLI
 
-The repository includes example pipelines in the `fixtures/` directory for all three CI systems:
+The repository includes example pipelines in the `fixtures/` directory for all supported CI systems:
+
+**Target CI Systems (for local execution):**
 - `fixtures/.gitlab-ci.yml`: GitLab CI example with build, test, and lint stages
 - `fixtures/.github/workflows/test.yml`: GitHub Actions example
 - `fixtures/.forgejo/workflows/test.yml`: Forgejo Actions example
 
-Test the CLI with: `magnolia detect --path fixtures`
+**Source CI Systems (for migration testing):**
+- `fixtures/bitrise.yml`: Bitrise configuration with build, test, and deploy workflows
+- `fixtures/codemagic.yaml`: Codemagic configuration with multiple workflows
+- `fixtures/.circleci/config.yml`: CircleCI configuration with job dependencies
+
+Test the CLI with:
+```bash
+# Run a pipeline locally
+magnolia
+
+# Test migration (requires claude or codex CLI)
+cd fixtures && magnolia migrate --dry-run
+```
 
 ## CI/CD Workflows
 

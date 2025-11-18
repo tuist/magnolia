@@ -1,0 +1,82 @@
+workflows:
+  build-and-test:
+    name: Build and Test
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      groups:
+        - production
+      vars:
+        NODE_ENV: "production"
+        PUBLIC_ENV_VARIABLE: "value here"
+      node: 18.x
+    cache:
+      cache_paths:
+        - $HOME/.npm
+        - node_modules
+    triggering:
+      events:
+        - push
+        - pull_request
+      branch_patterns:
+        - pattern: 'main'
+          include: true
+          source: true
+        - pattern: 'develop'
+          include: true
+          source: true
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install
+      - name: Run linter
+        script: |
+          npm run lint
+      - name: Run tests
+        script: |
+          npm test
+      - name: Build application
+        script: |
+          npm run build
+    artifacts:
+      - build/**
+    publishing:
+      email:
+        recipients:
+          - team@example.com
+        notify:
+          success: true
+          failure: true
+
+  deploy-production:
+    name: Deploy to Production
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    environment:
+      groups:
+        - production
+      vars:
+        DEPLOYMENT_ENV: "production"
+      node: 18.x
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: 'main'
+          include: true
+          source: true
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install
+      - name: Build for production
+        script: |
+          npm run build
+      - name: Deploy
+        script: |
+          echo "Deploying to production..."
+          npm run deploy
+    publishing:
+      slack:
+        channel: '#deployments'
+        notify_on_build_start: false

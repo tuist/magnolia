@@ -37,6 +37,8 @@ Or download from [releases](https://github.com/tuist/magnolia/releases).
 
 ## 🚀 Usage
 
+### Running Pipelines Locally
+
 ```bash
 # Interactive mode - discover and select pipeline
 magnolia
@@ -46,6 +48,44 @@ magnolia .gitlab-ci.yml
 magnolia .github/workflows/test.yml
 magnolia .forgejo/workflows/deploy.yml
 ```
+
+### Migrating from External CI Providers
+
+Magnolia can intelligently migrate CI pipelines from external providers (Bitrise, Codemagic, CircleCI) to your Git forge's native CI system using AI agents.
+
+```bash
+# Auto-detect source and target CI systems
+magnolia migrate
+
+# Override target CI system
+magnolia migrate --to github
+magnolia migrate --to gitlab
+magnolia migrate --to forgejo
+
+# Skip verification
+magnolia migrate --no-verify
+
+# Preview migration without writing files
+magnolia migrate --dry-run
+
+# Migrate specific source when multiple configs found
+magnolia migrate bitrise
+magnolia migrate circleci
+```
+
+**Supported Migration Sources:**
+- Bitrise (`bitrise.yml` or `.bitrise/bitrise.yml`)
+- Codemagic (`codemagic.yaml` or `.codemagic/codemagic.yaml`)
+- CircleCI (`.circleci/config.yml`)
+
+**Migration Targets (auto-detected from git remote):**
+- GitHub Actions (`.github/workflows/*.yml`)
+- GitLab CI (`.gitlab-ci.yml`)
+- Forgejo Actions (`.forgejo/workflows/*.yml`)
+
+**Requirements:**
+- Install either `claude` or `codex` CLI for AI-powered migration
+- The migration feature uses the agentic client protocol to delegate complex translation tasks
 
 ### ⚡ Execution
 

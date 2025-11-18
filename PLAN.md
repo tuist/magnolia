@@ -268,6 +268,133 @@ jobs:
 
 ---
 
+## CI Migration Feature
+
+### Pipeline Migration Command
+**Priority**: P1 - High
+**Complexity**: Very High
+**Impact**: Enables seamless migration from external CI providers to Git forge CI systems
+
+**Description**: Intelligent migration tool that automatically converts CI pipelines from external providers (Bitrise, Codemagic, CircleCI) to the Git forge's native CI system (GitHub Actions, GitLab CI, Forgejo Actions). Uses the agentic client protocol (Zed's MCP-based protocol) to delegate complex migration tasks to AI agents.
+
+**Implementation Tasks**:
+- [ ] Create agent client protocol module (`src/agent.rs`)
+  - [ ] Auto-detect available agent CLIs (`claude` or `codex`)
+  - [ ] Implement MCP-based communication protocol
+  - [ ] Support for task delegation with context passing
+  - [ ] Handle agent responses and errors gracefully
+
+- [ ] Add migration module (`src/migrate.rs`)
+  - [ ] Auto-detect source CI configurations by conventional paths
+  - [ ] Auto-detect target CI from git origin URL
+  - [ ] Support for multi-source selection (interactive prompt)
+  - [ ] Implement `--to` flag for target override
+  - [ ] Implement `--no-verify` flag to skip local testing
+  - [ ] Implement `--dry-run` flag for preview without writing
+
+- [ ] Implement CI source parsers
+  - [ ] Bitrise parser (`bitrise.yml`, `.bitrise/bitrise.yml`)
+  - [ ] Codemagic parser (`codemagic.yaml`, `.codemagic/codemagic.yaml`)
+  - [ ] CircleCI parser (`.circleci/config.yml`)
+
+- [ ] Implement git origin detection
+  - [ ] Parse git remote URL
+  - [ ] Map to target CI system (GitHub/GitLab/Forgejo)
+  - [ ] Determine target config file path
+
+- [ ] Implement hybrid agent delegation model
+  - [ ] Main Migration Agent: Orchestrates entire process
+  - [ ] Documentation Agent: Researches CI system feature mappings
+  - [ ] Parser Agent: Analyzes complex source configurations
+  - [ ] Validator Agent: Tests and fixes generated configs
+
+- [ ] Implement migration workflow
+  - [ ] Detection phase: Identify source and target CI
+  - [ ] Analysis phase: Parse source config with parser agent
+  - [ ] Research phase: Fetch docs with documentation agent
+  - [ ] Generation phase: Create target config
+  - [ ] Verification phase: Run `magnolia run` to validate
+  - [ ] Finalization phase: Write config to target location
+
+- [ ] Add comprehensive testing
+  - [ ] Unit tests for each CI parser
+  - [ ] Integration tests with real migration scenarios
+  - [ ] Fixtures for Bitrise, Codemagic, CircleCI configs
+  - [ ] End-to-end tests with agent mocking
+
+**CLI Interface**:
+```bash
+# Auto-detect source and target
+magnolia migrate
+
+# Override target CI system
+magnolia migrate --to gitlab
+
+# Skip local verification
+magnolia migrate --no-verify
+
+# Preview migration without writing files
+magnolia migrate --dry-run
+
+# Migrate specific source when multiple found
+magnolia migrate bitrise
+magnolia migrate circleci
+```
+
+**Source CI Detection** (conventional paths):
+- **Bitrise**: `bitrise.yml`, `.bitrise/bitrise.yml`
+- **Codemagic**: `codemagic.yaml`, `.codemagic/codemagic.yaml`
+- **CircleCI**: `.circleci/config.yml`
+
+**Target CI Detection** (git origin):
+- `github.com/*` → GitHub Actions (`.github/workflows/*.yml`)
+- `gitlab.com/*` → GitLab CI (`.gitlab-ci.yml`)
+- Forgejo/Gitea domains → Forgejo Actions (`.forgejo/workflows/*.yml`)
+
+**Architecture Considerations**:
+- Use Zed's MCP-based agentic client protocol
+- Support both `claude` and `codex` CLIs with auto-detection
+- Implement robust error handling for agent communication failures
+- Cache agent responses to avoid redundant API calls
+- Design for extensibility: easy to add new source/target CI systems
+- Maintain context between agent calls for coherent migrations
+- Implement rollback mechanism if verification fails
+
+**Agent Delegation Strategy**:
+1. **Main Migration Agent**:
+   - Receives full context (source config, target CI, git info)
+   - Orchestrates sub-agents for specialized tasks
+   - Makes final decisions on config generation
+
+2. **Documentation Agent**:
+   - Researches source CI provider docs
+   - Researches target CI provider docs
+   - Identifies feature equivalencies and gaps
+   - Returns mapping recommendations
+
+3. **Parser Agent**:
+   - Deep analysis of complex source configs
+   - Identifies patterns and dependencies
+   - Extracts semantic meaning from configs
+
+4. **Validator Agent**:
+   - Analyzes verification failures
+   - Suggests fixes based on error messages
+   - Iteratively improves generated config
+
+**Dependencies**:
+- Add `git2` crate for git remote parsing
+- Add `which` crate for CLI detection
+- Add `serde_json` for MCP protocol communication
+- Leverage existing parsers from `src/gitlab.rs`, `src/github.rs`, `src/forgejo.rs`
+
+**Version Planning**:
+- **v0.4.0**: Core migration infrastructure + Bitrise support
+- **v0.5.0**: Add Codemagic and CircleCI support
+- **v0.6.0**: Enhanced agent coordination and validation
+
+---
+
 ## Lower Priority Features
 
 ### 11. Workflow Dispatch
