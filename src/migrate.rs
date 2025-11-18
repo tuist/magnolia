@@ -12,6 +12,8 @@ pub enum CISystem {
     Bitrise,
     Codemagic,
     CircleCI,
+    AppCircle,
+    Buildkite,
 
     // Migration targets (Git forge CI systems)
     GitHubActions,
@@ -26,6 +28,8 @@ impl CISystem {
             CISystem::Bitrise => "Bitrise",
             CISystem::Codemagic => "Codemagic",
             CISystem::CircleCI => "CircleCI",
+            CISystem::AppCircle => "AppCircle",
+            CISystem::Buildkite => "Buildkite",
             CISystem::GitHubActions => "GitHub Actions",
             CISystem::GitLabCI => "GitLab CI",
             CISystem::ForgejoActions => "Forgejo Actions",
@@ -105,6 +109,38 @@ pub fn detect_source_configs(path: &Path) -> Result<Vec<SourceConfig>> {
             ci_system: CISystem::CircleCI,
             path: circleci_path,
         });
+    }
+
+    // Check for AppCircle
+    let appcircle_paths = vec![
+        path.join("appcircle.yaml"),
+        path.join("configuration.yaml"), // AppCircle export format
+        path.join(".appcircle").join("config.yaml"),
+    ];
+    for appcircle_path in appcircle_paths {
+        if appcircle_path.exists() {
+            configs.push(SourceConfig {
+                ci_system: CISystem::AppCircle,
+                path: appcircle_path,
+            });
+            break; // Only add one AppCircle config
+        }
+    }
+
+    // Check for Buildkite
+    let buildkite_paths = vec![
+        path.join(".buildkite").join("pipeline.yml"),
+        path.join(".buildkite").join("pipeline.yaml"),
+        path.join("buildkite.yml"), // Alternative location
+    ];
+    for buildkite_path in buildkite_paths {
+        if buildkite_path.exists() {
+            configs.push(SourceConfig {
+                ci_system: CISystem::Buildkite,
+                path: buildkite_path,
+            });
+            break; // Only add one Buildkite config
+        }
     }
 
     Ok(configs)
@@ -187,6 +223,8 @@ pub async fn migrate(options: MigrationOptions) -> Result<()> {
         println!("  - Bitrise: bitrise.yml or .bitrise/bitrise.yml");
         println!("  - Codemagic: codemagic.yaml or .codemagic/codemagic.yaml");
         println!("  - CircleCI: .circleci/config.yml");
+        println!("  - AppCircle: appcircle.yaml, configuration.yaml, or .appcircle/config.yaml");
+        println!("  - Buildkite: .buildkite/pipeline.yml or .buildkite/pipeline.yaml");
         return Ok(());
     }
 

@@ -34,12 +34,34 @@ fn test_detect_circleci_config() {
 }
 
 #[test]
+fn test_detect_appcircle_config() {
+    let fixtures_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fixtures");
+    let configs = magnolia::migrate::detect_source_configs(&fixtures_path).unwrap();
+
+    // Should find AppCircle config
+    assert!(configs
+        .iter()
+        .any(|c| matches!(c.ci_system, magnolia::migrate::CISystem::AppCircle)));
+}
+
+#[test]
+fn test_detect_buildkite_config() {
+    let fixtures_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fixtures");
+    let configs = magnolia::migrate::detect_source_configs(&fixtures_path).unwrap();
+
+    // Should find Buildkite config
+    assert!(configs
+        .iter()
+        .any(|c| matches!(c.ci_system, magnolia::migrate::CISystem::Buildkite)));
+}
+
+#[test]
 fn test_detect_all_configs() {
     let fixtures_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fixtures");
     let configs = magnolia::migrate::detect_source_configs(&fixtures_path).unwrap();
 
-    // Should find all three CI configs in fixtures
-    assert_eq!(configs.len(), 3, "Should detect all three CI configs");
+    // Should find all five CI configs in fixtures
+    assert_eq!(configs.len(), 5, "Should detect all five CI configs");
 }
 
 #[test]
@@ -47,6 +69,8 @@ fn test_ci_system_names() {
     assert_eq!(magnolia::migrate::CISystem::Bitrise.name(), "Bitrise");
     assert_eq!(magnolia::migrate::CISystem::Codemagic.name(), "Codemagic");
     assert_eq!(magnolia::migrate::CISystem::CircleCI.name(), "CircleCI");
+    assert_eq!(magnolia::migrate::CISystem::AppCircle.name(), "AppCircle");
+    assert_eq!(magnolia::migrate::CISystem::Buildkite.name(), "Buildkite");
     assert_eq!(
         magnolia::migrate::CISystem::GitHubActions.name(),
         "GitHub Actions"

@@ -77,6 +77,8 @@ magnolia migrate circleci
 - Bitrise (`bitrise.yml` or `.bitrise/bitrise.yml`)
 - Codemagic (`codemagic.yaml` or `.codemagic/codemagic.yaml`)
 - CircleCI (`.circleci/config.yml`)
+- AppCircle (`appcircle.yaml`, `configuration.yaml`, or `.appcircle/config.yaml`)
+- Buildkite (`.buildkite/pipeline.yml` or `.buildkite/pipeline.yaml`)
 
 **Migration Targets (auto-detected from git remote):**
 - GitHub Actions (`.github/workflows/*.yml`)
