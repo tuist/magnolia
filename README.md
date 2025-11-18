@@ -30,7 +30,7 @@ And what you couldn't test locally, you test before you commit
 ## 📦 Installation
 
 ```bash
-mise x ubi:tuist/magnolia
+mise use -g ubi:tuist/magnolia
 ```
 
 Or download from [releases](https://github.com/tuist/magnolia/releases).
