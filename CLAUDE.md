@@ -13,7 +13,12 @@ Magnolia is a Rust CLI tool that enables developers to run GitLab CI, GitHub Act
 2. **CI System Modules**:
    - `src/gitlab.rs`: Parses and executes GitLab CI pipelines (.gitlab-ci.yml)
    - `src/github.rs`: Parses and executes GitHub Actions workflows (.github/workflows/*.yml)
+     - Supports matrix strategy expansion (v0.3.0+)
+     - Matrix interpolation in runs-on, step names, and commands
+     - Support for fail-fast and max-parallel options
    - `src/forgejo.rs`: Parses and executes Forgejo/Gitea Actions workflows (.forgejo/workflows/*.yml or .gitea/workflows/*.yml)
+   - `src/container.rs`: Container runtime detection and execution (Docker/Podman)
+   - `src/actions.rs`: GitHub Actions execution support
 
 ### Commands
 
@@ -52,15 +57,26 @@ The project uses `git-cliff` for changelog generation and semantic versioning. T
 3. Test: `mise exec -- cargo test`
 4. Run locally: `mise exec -- cargo run -- <command>`
 
-## Future Enhancements
+## Feature Roadmap
 
-- Actual job execution (currently in simulation mode)
-- Docker container support for isolated execution
-- Environment variable handling
-- Secret management
-- Parallel job execution
-- Job dependency resolution
-- Cache support
+See [PLAN.md](PLAN.md) for the complete feature roadmap and implementation priorities.
+
+### Recently Implemented
+
+- **Matrix Strategies** (v0.3.0+): Full support for `strategy.matrix` with multi-dimensional expansion, interpolation, and fail-fast/max-parallel options
+
+### High Priority (Next)
+
+1. **Environment Variables**: Support for `env` at workflow/job/step levels with interpolation
+2. **Caching**: Support for `actions/cache` and related actions
+3. **Job Dependencies**: `needs` keyword with dependency graph resolution
+4. **Conditional Execution**: `if` conditions on jobs and steps
+5. **Context Expressions**: Full `${{ }}` expression evaluation
+
+### In Progress
+
+- Container-based execution (Docker/Podman support implemented)
+- GitHub Actions parsing and execution (basic support implemented)
 
 ## Testing the CLI
 
