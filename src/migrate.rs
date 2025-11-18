@@ -152,8 +152,12 @@ pub async fn get_git_context() -> Result<String> {
         .output()
         .await?;
 
-    let remote_url = String::from_utf8_lossy(&remote_output.stdout).trim().to_string();
-    let branch = String::from_utf8_lossy(&branch_output.stdout).trim().to_string();
+    let remote_url = String::from_utf8_lossy(&remote_output.stdout)
+        .trim()
+        .to_string();
+    let branch = String::from_utf8_lossy(&branch_output.stdout)
+        .trim()
+        .to_string();
 
     Ok(format!(
         "Git Remote: {}\nCurrent Branch: {}",
@@ -196,10 +200,7 @@ pub async fn migrate(options: MigrationOptions) -> Result<()> {
         source_configs.into_iter().next().unwrap()
     } else {
         // Multiple sources found, prompt user
-        let options_list: Vec<String> = source_configs
-            .iter()
-            .map(|c| c.display_name())
-            .collect();
+        let options_list: Vec<String> = source_configs.iter().map(|c| c.display_name()).collect();
 
         let selected = inquire::Select::new(
             "Multiple CI configurations found. Which would you like to migrate?",
@@ -239,11 +240,17 @@ pub async fn migrate(options: MigrationOptions) -> Result<()> {
     let git_context = get_git_context().await.unwrap_or_default();
 
     // Create agent client
-    println!("\n{}", "Initializing AI agent for migration...".cyan().bold());
+    println!(
+        "\n{}",
+        "Initializing AI agent for migration...".cyan().bold()
+    );
     let agent = AgentClient::new()?;
 
     // Execute migration
-    println!("{}", "Analyzing source configuration and researching documentation...".cyan());
+    println!(
+        "{}",
+        "Analyzing source configuration and researching documentation...".cyan()
+    );
     println!("{}", "This may take a moment...".dimmed());
 
     let migrated_config = agent
@@ -285,11 +292,7 @@ pub async fn migrate(options: MigrationOptions) -> Result<()> {
         .await
         .context("Failed to write migrated configuration")?;
 
-    println!(
-        "\n{} {}",
-        "Migration complete!".green().bold(),
-        "✓".green()
-    );
+    println!("\n{} {}", "Migration complete!".green().bold(), "✓".green());
     println!(
         "{} {}",
         "Configuration written to:".cyan(),

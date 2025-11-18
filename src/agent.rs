@@ -13,20 +13,12 @@ impl AgentCli {
     /// Auto-detect which agent CLI is available on the system
     pub fn detect() -> Option<Self> {
         // Check for 'claude' CLI first
-        if Command::new("claude")
-            .arg("--version")
-            .output()
-            .is_ok()
-        {
+        if Command::new("claude").arg("--version").output().is_ok() {
             return Some(AgentCli::Claude);
         }
 
         // Check for 'codex' CLI
-        if Command::new("codex")
-            .arg("--version")
-            .output()
-            .is_ok()
-        {
+        if Command::new("codex").arg("--version").output().is_ok() {
             return Some(AgentCli::Codex);
         }
 
@@ -34,6 +26,7 @@ impl AgentCli {
     }
 
     /// Get the command name for this CLI
+    #[allow(dead_code)]
     fn command_name(&self) -> &str {
         match self {
             AgentCli::Claude => "claude",
@@ -77,6 +70,7 @@ impl AgentClient {
     }
 
     /// Create a client with a specific CLI
+    #[allow(dead_code)]
     pub fn with_cli(cli: AgentCli) -> Self {
         Self { cli }
     }
@@ -113,10 +107,7 @@ impl AgentClient {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            anyhow::bail!(
-                "Agent task failed: {}",
-                stderr
-            );
+            anyhow::bail!("Agent task failed: {}", stderr);
         }
 
         let output_text = String::from_utf8_lossy(&output.stdout).to_string();
@@ -164,7 +155,9 @@ impl AgentClient {
         if !response.success {
             anyhow::bail!(
                 "Migration failed: {}",
-                response.error.unwrap_or_else(|| "Unknown error".to_string())
+                response
+                    .error
+                    .unwrap_or_else(|| "Unknown error".to_string())
             );
         }
 
@@ -186,6 +179,7 @@ impl AgentClient {
     }
 
     /// Research CI system documentation
+    #[allow(dead_code)]
     pub async fn research_docs(&self, ci_system: &str, feature: &str) -> Result<String> {
         let prompt = format!(
             "Research {} documentation for the following feature: {}. \
@@ -206,7 +200,9 @@ impl AgentClient {
         if !response.success {
             anyhow::bail!(
                 "Documentation research failed: {}",
-                response.error.unwrap_or_else(|| "Unknown error".to_string())
+                response
+                    .error
+                    .unwrap_or_else(|| "Unknown error".to_string())
             );
         }
 
@@ -214,6 +210,7 @@ impl AgentClient {
     }
 
     /// Validate and fix a generated configuration
+    #[allow(dead_code)]
     pub async fn validate_and_fix(
         &self,
         config: &str,
@@ -248,7 +245,9 @@ impl AgentClient {
         if !response.success {
             anyhow::bail!(
                 "Validation failed: {}",
-                response.error.unwrap_or_else(|| "Unknown error".to_string())
+                response
+                    .error
+                    .unwrap_or_else(|| "Unknown error".to_string())
             );
         }
 

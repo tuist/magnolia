@@ -5,4 +5,4 @@ mod agent;
 pub mod migrate;
 
 // Re-export commonly used types
-pub use migrate::{CISystem, SourceConfig, detect_source_configs};
+pub use migrate::{detect_source_configs, CISystem, SourceConfig};
