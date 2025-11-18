@@ -298,8 +298,7 @@ pub async fn migrate(options: MigrationOptions) -> Result<()> {
 
     println!(
         "\n{}",
-        "🔍 Step 2/3: Researching CI system documentation and generating configuration..."
-            .cyan()
+        "🔍 Step 2/3: Researching CI system documentation and generating configuration...".cyan()
     );
     println!(
         "  {} Consulting {} and {} documentation",
@@ -307,10 +306,7 @@ pub async fn migrate(options: MigrationOptions) -> Result<()> {
         source_config.ci_system.name().yellow(),
         target_ci.name().yellow()
     );
-    println!(
-        "  {} This may take 30-60 seconds...",
-        "→".dimmed()
-    );
+    println!("  {} This may take 30-60 seconds...", "→".dimmed());
 
     let migrated_config = agent
         .migrate_pipeline(
@@ -322,10 +318,7 @@ pub async fn migrate(options: MigrationOptions) -> Result<()> {
         .await
         .context("Migration failed")?;
 
-    println!(
-        "\n{}",
-        "✅ Step 3/3: Migration complete!".green().bold()
-    );
+    println!("\n{}", "✅ Step 3/3: Migration complete!".green().bold());
 
     // Determine output path
     let output_path = target_ci.target_path(&options.path, None);
