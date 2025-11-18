@@ -39,38 +39,99 @@ Or download from [releases](https://github.com/tuist/magnolia/releases).
 
 ### Running Pipelines Locally
 
+Test your CI/CD pipelines before pushing to your Git forge:
+
 ```bash
 # Interactive mode - discover and select pipeline
 magnolia
 
-# Direct pipeline file
-magnolia .gitlab-ci.yml
+# Run a specific workflow
 magnolia .github/workflows/test.yml
-magnolia .forgejo/workflows/deploy.yml
+
+# Run a specific job from a workflow
+magnolia .github/workflows/test.yml
+# Then select the job interactively
+```
+
+**Example workflow:**
+```bash
+$ magnolia .github/workflows/ci.yml
+Discovering pipelines...
+Select a pipeline: GitHub Actions: ci.yml
+
+Select a job to run:
+  > build
+    test
+    deploy
+
+Running job build from .github/workflows/ci.yml
+✓ Step: Checkout code
+✓ Step: Install dependencies
+✓ Step: Build application
 ```
 
 ### Migrating from External CI Providers
 
-Magnolia can intelligently migrate CI pipelines from external providers (Bitrise, Codemagic, CircleCI) to your Git forge's native CI system using AI agents.
+Seamlessly migrate from external CI providers to your Git forge's native CI using AI-powered translation:
 
 ```bash
 # Auto-detect source and target CI systems
 magnolia migrate
 
-# Override target CI system
-magnolia migrate --to github
-magnolia migrate --to gitlab
-magnolia migrate --to forgejo
-
-# Skip verification
-magnolia migrate --no-verify
-
 # Preview migration without writing files
 magnolia migrate --dry-run
 
+# Override target CI system
+magnolia migrate --to github
+
 # Migrate specific source when multiple configs found
 magnolia migrate bitrise
-magnolia migrate circleci
+```
+
+**Example migration:**
+```bash
+$ magnolia migrate bitrise --dry-run --to github
+Detecting CI configurations...
+Source: Bitrise (bitrise.yml)
+Target: GitHub Actions
+
+Initializing AI agent for migration...
+Analyzing source configuration and researching documentation...
+
+Generated configuration:
+================================================================================
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: ['**']
+
+jobs:
+  primary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: npm install
+      - name: Run tests
+        run: npm test
+      - name: Build
+        run: npm run build
+================================================================================
+
+Would be written to: .github/workflows/migrated-workflow.yml
+```
+
+**Common migration scenarios:**
+```bash
+# CircleCI → GitHub Actions
+magnolia migrate circleci --to github
+
+# Buildkite → GitLab CI
+magnolia migrate buildkite --to gitlab
+
+# Mobile app (AppCircle) → GitHub Actions
+magnolia migrate appcircle --to github
 ```
 
 **Supported Migration Sources:**
