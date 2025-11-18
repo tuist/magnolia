@@ -1,4 +1,0 @@
-# Ignore generated CI configs from migration
-.github/
-.gitlab-ci.yml
-.forgejo/
