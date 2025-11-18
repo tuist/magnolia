@@ -1,0 +1,68 @@
+---
+format_version: '13'
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+project_type: other
+
+workflows:
+  primary:
+    description: |
+      Primary workflow for building and testing the application
+    steps:
+    - activate-ssh-key@4:
+        run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+    - git-clone@8: {}
+    - cache-pull@2: {}
+    - script@1:
+        title: Install dependencies
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+            npm install
+    - script@1:
+        title: Run linter
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+            npm run lint
+    - script@1:
+        title: Run tests
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+            npm test
+    - script@1:
+        title: Build application
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+            npm run build
+    - cache-push@2:
+        inputs:
+        - cache_paths: |-
+            node_modules
+    - deploy-to-bitrise-io@2: {}
+
+  deploy:
+    description: |
+      Deploy workflow that runs after successful primary build
+    before_run:
+    - primary
+    steps:
+    - script@1:
+        title: Deploy to production
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            set -ex
+            echo "Deploying to production..."
+            npm run deploy
+
+app:
+  envs:
+  - opts:
+      is_expand: false
+    NODE_ENV: production

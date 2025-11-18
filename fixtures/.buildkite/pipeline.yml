@@ -1,0 +1,98 @@
+---
+# Buildkite Pipeline Configuration
+# Example CI/CD pipeline for a web application
+
+env:
+  NODE_ENV: "production"
+  AWS_REGION: "us-east-1"
+
+steps:
+  - label: ":hammer: Build"
+    key: "build"
+    command: |
+      echo "Installing dependencies..."
+      npm install
+      echo "Building application..."
+      npm run build
+    agents:
+      queue: "default"
+    artifact_paths:
+      - "dist/**/*"
+      - "build/**/*"
+
+  - wait
+
+  - label: ":test_tube: Unit Tests"
+    key: "unit-tests"
+    command: |
+      npm test -- --coverage
+    agents:
+      queue: "default"
+    artifact_paths:
+      - "coverage/**/*"
+
+  - label: ":eslint: Lint"
+    key: "lint"
+    command: |
+      npm run lint
+    agents:
+      queue: "default"
+
+  - wait
+
+  - label: ":docker: Build Docker Image"
+    key: "docker-build"
+    depends_on:
+      - "build"
+      - "unit-tests"
+      - "lint"
+    command: |
+      echo "Building Docker image..."
+      docker build -t myapp:${BUILDKITE_COMMIT:0:7} .
+      docker tag myapp:${BUILDKITE_COMMIT:0:7} myapp:latest
+    agents:
+      queue: "docker"
+
+  - block: ":rocket: Deploy to Production?"
+    prompt: "Deploy this build to production?"
+    depends_on: "docker-build"
+
+  - label: ":rocket: Deploy to Production"
+    key: "deploy-production"
+    command: |
+      echo "Deploying to production..."
+      docker push myapp:${BUILDKITE_COMMIT:0:7}
+      kubectl set image deployment/myapp myapp=myapp:${BUILDKITE_COMMIT:0:7}
+    agents:
+      queue: "deploy"
+    env:
+      ENVIRONMENT: "production"
+    branches: "main"
+    concurrency: 1
+    concurrency_group: "production-deploy"
+
+  - label: ":satellite: Deploy to Staging"
+    key: "deploy-staging"
+    command: |
+      echo "Deploying to staging..."
+      docker push myapp:${BUILDKITE_COMMIT:0:7}
+      kubectl set image deployment/myapp-staging myapp=myapp:${BUILDKITE_COMMIT:0:7}
+    agents:
+      queue: "deploy"
+    depends_on: "docker-build"
+    env:
+      ENVIRONMENT: "staging"
+    branches: "!main"
+
+  - wait
+
+  - label: ":email: Notify Team"
+    command: |
+      echo "Build completed successfully!"
+      if [ "$BUILDKITE_BRANCH" = "main" ]; then
+        curl -X POST "$SLACK_WEBHOOK_URL" \
+          -d "{\"text\":\"Production deployment completed: ${BUILDKITE_MESSAGE}\"}"
+      fi
+    agents:
+      queue: "default"
+    if: build.state == "passed"

@@ -1,0 +1,103 @@
+---
+# AppCircle CI/CD Configuration
+# This is a configuration export from AppCircle for a React Native mobile app
+
+name: "Mobile App Build Configuration"
+platform: "React Native"
+poolId: "default"
+
+workflows:
+  build:
+    name: "Build and Test"
+    steps:
+      - name: "Activate SSH Key"
+        script: |
+          if [ -n "$AC_REPOSITORY_SSH_KEY" ]; then
+            eval "$(ssh-agent -s)"
+            ssh-add - <<< "$AC_REPOSITORY_SSH_KEY"
+          fi
+
+      - name: "Git Clone"
+        script: |
+          git clone "$AC_REPOSITORY_URL" .
+          git checkout "$AC_GIT_BRANCH"
+
+      - name: "Install Node Modules"
+        script: |
+          npm install
+
+      - name: "Install CocoaPods"
+        platform: ios
+        script: |
+          cd ios
+          pod install
+
+      - name: "Run Linter"
+        script: |
+          npm run lint
+
+      - name: "Run Tests"
+        script: |
+          npm test
+
+      - name: "Build iOS"
+        platform: ios
+        script: |
+          cd ios
+          xcodebuild -workspace MyApp.xcworkspace \
+            -scheme MyApp \
+            -configuration Release \
+            -archivePath build/MyApp.xcarchive \
+            archive
+
+      - name: "Build Android"
+        platform: android
+        script: |
+          cd android
+          ./gradlew assembleRelease
+
+      - name: "Export IPA"
+        platform: ios
+        script: |
+          xcodebuild -exportArchive \
+            -archivePath build/MyApp.xcarchive \
+            -exportPath build \
+            -exportOptionsPlist ExportOptions.plist
+
+      - name: "Sign Android APK"
+        platform: android
+        script: |
+          jarsigner -verbose \
+            -sigalg SHA256withRSA \
+            -digestalg SHA-256 \
+            -keystore $AC_KEYSTORE_PATH \
+            -storepass $AC_KEYSTORE_PASSWORD \
+            android/app/build/outputs/apk/release/app-release.apk \
+            $AC_KEYSTORE_ALIAS
+
+environment:
+  - name: "NODE_ENV"
+    value: "production"
+  - name: "AC_REPOSITORY_URL"
+    value: "git@github.com:company/mobile-app.git"
+  - name: "AC_GIT_BRANCH"
+    value: "main"
+
+caching:
+  paths:
+    - "node_modules"
+    - "ios/Pods"
+    - "android/.gradle"
+
+artifacts:
+  - "ios/build/*.ipa"
+  - "android/app/build/outputs/apk/**/*.apk"
+
+notifications:
+  email:
+    enabled: true
+    recipients:
+      - "team@example.com"
+  slack:
+    enabled: true
+    webhook: "$SLACK_WEBHOOK_URL"
