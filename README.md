@@ -96,7 +96,17 @@ Source: Bitrise (bitrise.yml)
 Target: GitHub Actions
 
 Initializing AI agent for migration...
-Analyzing source configuration and researching documentation...
+
+📋 Step 1/3: Analyzing source configuration...
+  → Reading Bitrise pipeline from bitrise.yml
+
+🔍 Step 2/3: Researching CI system documentation and generating configuration...
+  → Consulting Bitrise and GitHub Actions documentation
+  → This may take 30-60 seconds...
+
+✅ Step 3/3: Migration complete!
+
+Dry run - migration preview:
 
 Generated configuration:
 ================================================================================

@@ -284,12 +284,33 @@ pub async fn migrate(options: MigrationOptions) -> Result<()> {
     );
     let agent = AgentClient::new()?;
 
-    // Execute migration
+    // Execute migration with progress updates
     println!(
         "{}",
-        "Analyzing source configuration and researching documentation...".cyan()
+        "📋 Step 1/3: Analyzing source configuration...".cyan()
     );
-    println!("{}", "This may take a moment...".dimmed());
+    println!(
+        "  {} Reading {} pipeline from {}",
+        "→".dimmed(),
+        source_config.ci_system.name().yellow(),
+        source_config.path.display().to_string().dimmed()
+    );
+
+    println!(
+        "\n{}",
+        "🔍 Step 2/3: Researching CI system documentation and generating configuration..."
+            .cyan()
+    );
+    println!(
+        "  {} Consulting {} and {} documentation",
+        "→".dimmed(),
+        source_config.ci_system.name().yellow(),
+        target_ci.name().yellow()
+    );
+    println!(
+        "  {} This may take 30-60 seconds...",
+        "→".dimmed()
+    );
 
     let migrated_config = agent
         .migrate_pipeline(
@@ -300,6 +321,11 @@ pub async fn migrate(options: MigrationOptions) -> Result<()> {
         )
         .await
         .context("Migration failed")?;
+
+    println!(
+        "\n{}",
+        "✅ Step 3/3: Migration complete!".green().bold()
+    );
 
     // Determine output path
     let output_path = target_ci.target_path(&options.path, None);
