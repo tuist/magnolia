@@ -104,7 +104,11 @@ pub fn list_jobs(path: &Path) -> Result<()> {
     Ok(())
 }
 
-pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Result<()> {
+pub async fn run_job_from_file(
+    pipeline_path: &PathBuf,
+    job_name: &str,
+    non_interactive: bool,
+) -> Result<()> {
     let content = std::fs::read_to_string(pipeline_path)
         .context(format!("Failed to read {}", pipeline_path.display()))?;
 
@@ -148,10 +152,14 @@ pub async fn run_job_from_file(pipeline_path: &PathBuf, job_name: &str) -> Resul
             }
 
             // Ask for confirmation
-            let confirm = inquire::Confirm::new("Execute these steps?")
-                .with_default(false)
-                .prompt()
-                .unwrap_or(false);
+            let confirm = if non_interactive {
+                true
+            } else {
+                inquire::Confirm::new("Execute these steps?")
+                    .with_default(false)
+                    .prompt()
+                    .unwrap_or(false)
+            };
 
             if !confirm {
                 println!("{}", "Execution cancelled".yellow());

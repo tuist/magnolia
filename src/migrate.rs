@@ -208,6 +208,7 @@ pub struct MigrationOptions {
     pub verify: bool,
     pub dry_run: bool,
     pub path: PathBuf,
+    pub non_interactive: bool,
 }
 
 /// Migrate a CI pipeline
@@ -237,7 +238,12 @@ pub async fn migrate(options: MigrationOptions) -> Result<()> {
     } else if source_configs.len() == 1 {
         source_configs.into_iter().next().unwrap()
     } else {
-        // Multiple sources found, prompt user
+        // Multiple sources found
+        if options.non_interactive {
+            anyhow::bail!("Multiple source CI configurations found. Please specify one with --source or use interactive mode.");
+        }
+
+        // Prompt user
         let options_list: Vec<String> = source_configs.iter().map(|c| c.display_name()).collect();
 
         let selected = inquire::Select::new(

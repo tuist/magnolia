@@ -21,6 +21,14 @@ struct Cli {
     /// Path to a specific pipeline file (e.g., .gitlab-ci.yml, .github/workflows/test.yml)
     /// If not provided, will detect and prompt for available pipelines
     pipeline: Option<PathBuf>,
+
+    /// Job to run (useful for non-interactive mode)
+    #[arg(long, short)]
+    job: Option<String>,
+
+    /// Disable interactive prompts
+    #[arg(long, short = 'n', global = true)]
+    non_interactive: bool,
 }
 
 #[derive(Subcommand)]
@@ -231,6 +239,7 @@ async fn main() -> Result<()> {
                     verify: !no_verify,
                     dry_run,
                     path,
+                    non_interactive: cli.non_interactive,
                 };
 
                 return migrate::migrate(options).await;
@@ -260,19 +269,28 @@ async fn main() -> Result<()> {
             return Ok(());
         }
 
-        let pipeline_options: Vec<String> =
-            pipelines.iter().map(|(name, _, _)| name.clone()).collect();
+        if cli.non_interactive {
+            if pipelines.len() == 1 {
+                let p = pipelines.first().unwrap();
+                (p.1.clone(), p.2)
+            } else {
+                anyhow::bail!("Multiple pipelines found. Please specify one or use interactive mode.");
+            }
+        } else {
+            let pipeline_options: Vec<String> =
+                pipelines.iter().map(|(name, _, _)| name.clone()).collect();
 
-        let selected_idx = inquire::Select::new("Select a pipeline:", pipeline_options)
-            .prompt()
-            .map_err(|_| anyhow::anyhow!("Selection cancelled"))?;
+            let selected_idx = inquire::Select::new("Select a pipeline:", pipeline_options)
+                .prompt()
+                .map_err(|_| anyhow::anyhow!("Selection cancelled"))?;
 
-        let selected = pipelines
-            .iter()
-            .find(|(name, _, _)| name == &selected_idx)
-            .unwrap();
+            let selected = pipelines
+                .iter()
+                .find(|(name, _, _)| name == &selected_idx)
+                .unwrap();
 
-        (selected.1.clone(), selected.2)
+            (selected.1.clone(), selected.2)
+        }
     };
 
     // Get available jobs from the selected pipeline
@@ -286,10 +304,23 @@ async fn main() -> Result<()> {
         anyhow::bail!("No jobs found in pipeline");
     }
 
-    // Prompt for job selection
-    let selected_job = inquire::Select::new("Select a job to run:", available_jobs)
-        .prompt()
-        .map_err(|_| anyhow::anyhow!("Selection cancelled"))?;
+    // Select job
+    let selected_job = if let Some(job_name) = cli.job {
+        if !available_jobs.contains(&job_name) {
+            anyhow::bail!("Job '{}' not found in pipeline. Available jobs: {:?}", job_name, available_jobs);
+        }
+        job_name
+    } else if cli.non_interactive {
+        if available_jobs.len() == 1 {
+            available_jobs.first().unwrap().clone()
+        } else {
+             anyhow::bail!("Multiple jobs found. Please specify one with --job or use interactive mode. Available jobs: {:?}", available_jobs);
+        }
+    } else {
+        inquire::Select::new("Select a job to run:", available_jobs)
+            .prompt()
+            .map_err(|_| anyhow::anyhow!("Selection cancelled"))?
+    };
 
     println!(
         "\n{} {} {} {}",
@@ -301,9 +332,15 @@ async fn main() -> Result<()> {
 
     // Run the selected job
     match ci_system {
-        CISystem::GitLab => gitlab::run_job_from_file(&pipeline_path, &selected_job).await?,
-        CISystem::GitHub => github::run_job_from_file(&pipeline_path, &selected_job).await?,
-        CISystem::Forgejo => forgejo::run_job_from_file(&pipeline_path, &selected_job).await?,
+        CISystem::GitLab => {
+            gitlab::run_job_from_file(&pipeline_path, &selected_job, cli.non_interactive).await?
+        }
+        CISystem::GitHub => {
+            github::run_job_from_file(&pipeline_path, &selected_job, cli.non_interactive).await?
+        }
+        CISystem::Forgejo => {
+            forgejo::run_job_from_file(&pipeline_path, &selected_job, cli.non_interactive).await?
+        }
     }
 
     Ok(())

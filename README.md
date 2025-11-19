@@ -51,6 +51,9 @@ magnolia .github/workflows/test.yml
 # Run a specific job from a workflow
 magnolia .github/workflows/test.yml
 # Then select the job interactively
+
+# Run non-interactively (useful for scripts)
+magnolia .github/workflows/test.yml --job test --non-interactive
 ```
 
 **Example workflow:**
@@ -86,6 +89,9 @@ magnolia migrate --to github
 
 # Migrate specific source when multiple configs found
 magnolia migrate bitrise
+
+# Automated migration (non-interactive)
+magnolia migrate bitrise --non-interactive
 ```
 
 **Example migration:**
