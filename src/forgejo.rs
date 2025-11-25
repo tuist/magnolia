@@ -108,6 +108,7 @@ pub async fn run_job_from_file(
     pipeline_path: &PathBuf,
     job_name: &str,
     non_interactive: bool,
+    skip_checkout: bool,
 ) -> Result<()> {
     let content = std::fs::read_to_string(pipeline_path)
         .context(format!("Failed to read {}", pipeline_path.display()))?;
@@ -205,6 +206,15 @@ pub async fn run_job_from_file(
                     container::execute_steps(runtime.as_ref(), image, std::slice::from_ref(run))
                         .await?;
                 } else if let Some(uses) = &step.uses {
+                    // Skip checkout actions if flag is set
+                    if skip_checkout && uses.contains("checkout") {
+                        println!(
+                            "  {} Skipping checkout action (--skip-checkout)",
+                            "⊘".yellow()
+                        );
+                        continue;
+                    }
+
                     // Execute action step
                     use crate::actions;
                     actions::execute_action(uses, step.with.as_ref()).await?;

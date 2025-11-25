@@ -241,6 +241,7 @@ async fn execute_job_with_matrix(
     job: &Job,
     matrix_combo: &MatrixCombination,
     runs_on: &str,
+    skip_checkout: bool,
 ) -> Result<()> {
     if let Some(steps) = &job.steps {
         println!("\n{}", "Steps:".cyan());
@@ -297,6 +298,15 @@ async fn execute_job_with_matrix(
                 // Interpolate matrix values in action reference
                 let interpolated_uses = matrix_combo.interpolate(uses);
 
+                // Skip checkout actions if flag is set
+                if skip_checkout && interpolated_uses.contains("checkout") {
+                    println!(
+                        "  {} Skipping checkout action (--skip-checkout)",
+                        "⊘".yellow()
+                    );
+                    continue;
+                }
+
                 // Execute action step
                 use crate::actions;
                 actions::execute_action(&interpolated_uses, step.with.as_ref()).await?;
@@ -315,6 +325,7 @@ pub async fn run_job_from_file(
     pipeline_path: &PathBuf,
     job_name: &str,
     non_interactive: bool,
+    skip_checkout: bool,
 ) -> Result<()> {
     let content = std::fs::read_to_string(pipeline_path)
         .context(format!("Failed to read {}", pipeline_path.display()))?;
@@ -410,7 +421,8 @@ pub async fn run_job_from_file(
                     println!("  Runs on: {}", runs_on_str.blue());
 
                     // Execute the job with this matrix combination
-                    let result = execute_job_with_matrix(job, combo, &runs_on_str).await;
+                    let result =
+                        execute_job_with_matrix(job, combo, &runs_on_str, skip_checkout).await;
 
                     if let Err(e) = result {
                         eprintln!(
@@ -532,6 +544,15 @@ pub async fn run_job_from_file(
                     container::execute_steps(runtime.as_ref(), image, std::slice::from_ref(run))
                         .await?;
                 } else if let Some(uses) = &step.uses {
+                    // Skip checkout actions if flag is set
+                    if skip_checkout && uses.contains("checkout") {
+                        println!(
+                            "  {} Skipping checkout action (--skip-checkout)",
+                            "⊘".yellow()
+                        );
+                        continue;
+                    }
+
                     // Execute action step
                     use crate::actions;
                     actions::execute_action(uses, step.with.as_ref()).await?;
