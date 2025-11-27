@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] - 2025-11-27
+
+### 🐛 Bug Fixes
+
+- Resolve formatting and clippy issues for CI ([f84e300](f84e3009a680d197133ffdfe1ee693baf75051ae))
+- Skip migration test when no agent CLI is available ([f9be604](f9be604bce04bbe6b6650c80871970e4dd17df03))
+
+### 🚀 Features
+
+- Add non-interactive mode and improve runner images ([376161f](376161f1cfded1d38d741bcacc39281e54a5d753))
+
 ## [0.6.3] - 2025-11-27
 
 ### 📚 Documentation
