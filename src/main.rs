@@ -274,7 +274,9 @@ async fn main() -> Result<()> {
                 let p = pipelines.first().unwrap();
                 (p.1.clone(), p.2)
             } else {
-                anyhow::bail!("Multiple pipelines found. Please specify one or use interactive mode.");
+                anyhow::bail!(
+                    "Multiple pipelines found. Please specify one or use interactive mode."
+                );
             }
         } else {
             let pipeline_options: Vec<String> =
@@ -307,14 +309,18 @@ async fn main() -> Result<()> {
     // Select job
     let selected_job = if let Some(job_name) = cli.job {
         if !available_jobs.contains(&job_name) {
-            anyhow::bail!("Job '{}' not found in pipeline. Available jobs: {:?}", job_name, available_jobs);
+            anyhow::bail!(
+                "Job '{}' not found in pipeline. Available jobs: {:?}",
+                job_name,
+                available_jobs
+            );
         }
         job_name
     } else if cli.non_interactive {
         if available_jobs.len() == 1 {
             available_jobs.first().unwrap().clone()
         } else {
-             anyhow::bail!("Multiple jobs found. Please specify one with --job or use interactive mode. Available jobs: {:?}", available_jobs);
+            anyhow::bail!("Multiple jobs found. Please specify one with --job or use interactive mode. Available jobs: {:?}", available_jobs);
         }
     } else {
         inquire::Select::new("Select a job to run:", available_jobs)
