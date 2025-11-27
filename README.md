@@ -2,6 +2,9 @@
 
 Run GitLab CI, GitHub Actions, and Forgejo pipelines locally.
 
+> [!IMPORTANT]
+> This project is in the ideation phase. We may open PRs and address issues, but we're not actively monitoring repository activity.
+
 ## 🌸 The Magnolia Manifesto
 
 **[Verse 1]**<br>
