@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.3] - 2025-11-27
+
+### 📚 Documentation
+
+- Update README.md [skip ci] ([be70623](be70623018ad637eddab7950caf37019e6f040ce))
+- Create .all-contributorsrc [skip ci] ([7c231ae](7c231ae6f6187c5e79e8108d67ea4776eb4c4287))
+
 ## [0.6.2] - 2025-11-27
 
 ### 🐛 Bug Fixes
