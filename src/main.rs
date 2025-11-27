@@ -29,6 +29,13 @@ struct Cli {
     /// Disable interactive prompts
     #[arg(long, short = 'n', global = true)]
     non_interactive: bool,
+
+    /// Skip checkout actions to preserve local working directory changes.
+    /// WARNING: Without this flag, checkout actions will reset your working directory
+    /// to the committed state, potentially causing data loss of uncommitted changes.
+    /// Use this flag when testing local modifications to CI workflows.
+    #[arg(long)]
+    skip_checkout: bool,
 }
 
 #[derive(Subcommand)]
@@ -339,13 +346,31 @@ async fn main() -> Result<()> {
     // Run the selected job
     match ci_system {
         CISystem::GitLab => {
-            gitlab::run_job_from_file(&pipeline_path, &selected_job, cli.non_interactive).await?
+            gitlab::run_job_from_file(
+                &pipeline_path,
+                &selected_job,
+                cli.non_interactive,
+                cli.skip_checkout,
+            )
+            .await?
         }
         CISystem::GitHub => {
-            github::run_job_from_file(&pipeline_path, &selected_job, cli.non_interactive).await?
+            github::run_job_from_file(
+                &pipeline_path,
+                &selected_job,
+                cli.non_interactive,
+                cli.skip_checkout,
+            )
+            .await?
         }
         CISystem::Forgejo => {
-            forgejo::run_job_from_file(&pipeline_path, &selected_job, cli.non_interactive).await?
+            forgejo::run_job_from_file(
+                &pipeline_path,
+                &selected_job,
+                cli.non_interactive,
+                cli.skip_checkout,
+            )
+            .await?
         }
     }
 

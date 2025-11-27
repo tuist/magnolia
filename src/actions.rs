@@ -72,7 +72,17 @@ pub enum ActionType {
 pub struct ActionMetadata {
     pub name: String,
     pub description: Option<String>,
+    pub inputs: Option<std::collections::HashMap<String, ActionInput>>,
     pub runs: ActionRuns,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ActionInput {
+    pub description: Option<String>,
+    pub required: Option<bool>,
+    pub default: Option<serde_yaml::Value>,
+    #[serde(rename = "type")]
+    pub input_type: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -197,11 +207,12 @@ pub async fn execute_composite_action(
     steps: &[CompositeStep],
     action_dir: &PathBuf,
     inputs: Option<&std::collections::HashMap<String, serde_yaml::Value>>,
+    action_inputs: Option<&std::collections::HashMap<String, ActionInput>>,
 ) -> Result<()> {
     println!("  {} Executing composite action steps", "→".cyan());
 
     // Set up GitHub Actions environment
-    let github_env = setup_github_env(inputs);
+    let github_env = setup_github_env(inputs, action_inputs);
 
     for (i, step) in steps.iter().enumerate() {
         let default_name = format!("Step {}", i + 1);
@@ -372,6 +383,7 @@ fn get_github_token() -> String {
 /// Set up GitHub Actions environment variables
 fn setup_github_env(
     inputs: Option<&std::collections::HashMap<String, serde_yaml::Value>>,
+    action_inputs: Option<&std::collections::HashMap<String, ActionInput>>,
 ) -> std::collections::HashMap<String, String> {
     let mut env = std::collections::HashMap::new();
 
@@ -443,16 +455,23 @@ fn setup_github_env(
     // CI indicator
     env.insert("CI".to_string(), "true".to_string());
 
-    // Add action inputs as INPUT_* environment variables
+    // First, apply default values from action metadata
+    if let Some(action_inputs) = action_inputs {
+        for (key, input_def) in action_inputs {
+            if let Some(default_value) = &input_def.default {
+                let env_key = format_input_env_key(key);
+                let env_value = format_input_value(default_value);
+                eprintln!("[DEBUG] Setting {} = {}", env_key, env_value);
+                env.insert(env_key, env_value);
+            }
+        }
+    }
+
+    // Then, add/override with user-provided inputs as INPUT_* environment variables
     if let Some(inputs) = inputs {
         for (key, value) in inputs {
-            let env_key = format!("INPUT_{}", key.to_uppercase().replace('-', "_"));
-            let env_value = match value {
-                serde_yaml::Value::String(s) => s.clone(),
-                serde_yaml::Value::Number(n) => n.to_string(),
-                serde_yaml::Value::Bool(b) => b.to_string(),
-                _ => serde_yaml::to_string(value).unwrap_or_default(),
-            };
+            let env_key = format_input_env_key(key);
+            let env_value = format_input_value(value);
             env.insert(env_key, env_value);
         }
     }
@@ -467,12 +486,33 @@ fn setup_github_env(
     env
 }
 
+fn format_input_env_key(key: &str) -> String {
+    format!("INPUT_{}", key.to_uppercase().replace(' ', "_"))
+}
+
+fn format_input_value(value: &serde_yaml::Value) -> String {
+    match value {
+        serde_yaml::Value::String(s) => s.clone(),
+        serde_yaml::Value::Number(n) => n.to_string(),
+        serde_yaml::Value::Bool(b) => {
+            if *b {
+                "true".to_string()
+            } else {
+                "false".to_string()
+            }
+        }
+        serde_yaml::Value::Null => String::new(),
+        _ => serde_yaml::to_string(value).unwrap_or_default(),
+    }
+}
+
 /// Execute a Node.js action
 pub async fn execute_node_action(
     main: &str,
     action_dir: &PathBuf,
     node_version: &str,
     inputs: Option<&std::collections::HashMap<String, serde_yaml::Value>>,
+    action_inputs: Option<&std::collections::HashMap<String, ActionInput>>,
 ) -> Result<()> {
     println!(
         "  {} Executing Node.js action: {}",
@@ -499,7 +539,7 @@ pub async fn execute_node_action(
     }
 
     // Set up GitHub Actions environment
-    let github_env = setup_github_env(inputs);
+    let github_env = setup_github_env(inputs, action_inputs);
 
     let mut cmd = tokio::process::Command::new("node");
     cmd.arg(&main_file)
@@ -582,7 +622,8 @@ pub async fn execute_action(
     match action_type {
         ActionType::Composite => {
             if let ActionRuns::Composite { steps, .. } = metadata.runs {
-                execute_composite_action(&steps, &action_dir, inputs).await?;
+                execute_composite_action(&steps, &action_dir, inputs, metadata.inputs.as_ref())
+                    .await?;
             }
         }
         ActionType::Docker { image } => {
@@ -593,10 +634,10 @@ pub async fn execute_action(
             execute_docker_action(&image, &action_dir, &runtime).await?;
         }
         ActionType::Node20 { main } => {
-            execute_node_action(&main, &action_dir, "20", inputs).await?;
+            execute_node_action(&main, &action_dir, "20", inputs, metadata.inputs.as_ref()).await?;
         }
         ActionType::Node16 { main } => {
-            execute_node_action(&main, &action_dir, "16", inputs).await?;
+            execute_node_action(&main, &action_dir, "16", inputs, metadata.inputs.as_ref()).await?;
         }
     }
 
