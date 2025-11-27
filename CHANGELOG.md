@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.1] - 2025-11-27
+
+### 🐛 Bug Fixes
+
+- **(actions)** Handle boolean inputs correctly and add --skip-checkout ([9c89718](9c897187aa6c99163796e8951f88dce1f95925c3))
+
 ## [0.7.0] - 2025-11-27
 
 ### 🐛 Bug Fixes
