@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.2] - 2025-11-27
+
+### 🐛 Bug Fixes
+
+- **(deps)** Update rust crate colored to v3 ([3dc256a](3dc256a76f6fc73ea583c19dc1a95220e629a651))
+
+### 📦 Dependency Updates
+
+- **(deps)** Update dependency node to v24 ([e77a59b](e77a59bcabc619254e39f74458af317298948f85))
+- **(deps)** Update github artifact actions ([aa09b0d](aa09b0da4d4f5e271e700c9dc4e9dd68aa273670))
+
 ## [0.6.1] - 2025-11-27
 
 ### 📦 Dependency Updates
