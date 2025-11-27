@@ -20,7 +20,7 @@ jobs:
           echo "Build completed successfully"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: magnolia
           path: target/release/magnolia
