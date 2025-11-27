@@ -114,10 +114,10 @@ pub async fn execute_on_host(command: &str) -> Result<()> {
 /// Map GitHub Actions / Forgejo Actions runner names to Docker images
 pub fn map_runner_to_image(runs_on: &str) -> Option<&'static str> {
     match runs_on {
-        // Ubuntu runners
-        "ubuntu-latest" | "ubuntu-24.04" => Some("ubuntu:24.04"),
-        "ubuntu-22.04" => Some("ubuntu:22.04"),
-        "ubuntu-20.04" => Some("ubuntu:20.04"),
+        // Ubuntu runners - use catthehacker images which include standard CI tools (git, curl, etc.)
+        "ubuntu-latest" | "ubuntu-24.04" => Some("catthehacker/ubuntu:runner-latest"),
+        "ubuntu-22.04" => Some("catthehacker/ubuntu:runner-22.04"),
+        "ubuntu-20.04" => Some("catthehacker/ubuntu:runner-20.04"),
 
         // Debian runners
         "debian-latest" | "debian-12" => Some("debian:12"),
@@ -175,4 +175,27 @@ pub async fn execute_steps(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_map_runner_to_image() {
+        assert_eq!(
+            map_runner_to_image("ubuntu-latest"),
+            Some("catthehacker/ubuntu:runner-latest")
+        );
+        assert_eq!(
+            map_runner_to_image("ubuntu-24.04"),
+            Some("catthehacker/ubuntu:runner-latest")
+        );
+        assert_eq!(
+            map_runner_to_image("ubuntu-22.04"),
+            Some("catthehacker/ubuntu:runner-22.04")
+        );
+        assert_eq!(map_runner_to_image("debian-latest"), Some("debian:12"));
+        assert_eq!(map_runner_to_image("macos-latest"), None);
+    }
 }
