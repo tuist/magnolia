@@ -1,6 +1,6 @@
 [package]
 name = "magnolia"
-version = "0.6.0"
+version = "0.6.1"
 edition = "2021"
 authors = ["Tuist <support@tuist.io>"]
 description = "A CLI tool to run GitLab, GitHub, and Forgejo pipelines locally"

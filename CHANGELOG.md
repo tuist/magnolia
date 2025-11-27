@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.1] - 2025-11-27
+
+### 📦 Dependency Updates
+
+- **(deps)** Pin node.js ([47077b8](47077b81d39052a3e0cf5fccc77f28271e2ff4ce))
+- **(deps)** Update actions/checkout action to v6 ([eff3bec](eff3bec7100c8e676e24400282922ed320124d9f))
+- **(deps)** Update node.js to v24 ([a7894b6](a7894b6973d4a677902f7d8d25b5c25b4345277d))
+- **(deps)** Update dependency node to v7 ([29b08b9](29b08b9d7f1c0a71d40d5010192a6ffb922f9b2e))
+- **(deps)** Update rust crate clap to v4.5.53 ([ecf76ff](ecf76ff282fd8d12a14b653428ba7ae4dc9c1324))
+
 ## [0.6.0] - 2025-11-18
 
 ### 🎨 Styling
