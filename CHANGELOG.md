@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.2] - 2025-12-05
+
+### 📦 Dependency Updates
+
+- **(deps)** Update rust crate uuid to v1.19.0 ([97e6fd7](97e6fd7adc1c6c5cc1fced162b28da6374e395c8))
+
 ## [0.7.1] - 2025-11-27
 
 ### 🐛 Bug Fixes
