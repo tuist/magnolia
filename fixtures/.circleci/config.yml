@@ -6,7 +6,7 @@ orbs:
 executors:
   node-executor:
     docker:
-      - image: cimg/node:24.11.1
+      - image: cimg/node:24.12.0
     working_directory: ~/project
     environment:
       NODE_ENV: production
