@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.3] - 2025-12-29
+
+### 📦 Dependency Updates
+
+- **(deps)** Update node.js to v24.12.0 ([508a4ec](508a4ec3367c8845ae1b23e5185f4bd7b703771b))
+- **(deps)** Update github artifact actions ([5381d3b](5381d3bf66baedb43465aa198b48ea7553109493))
+
 ## [0.7.2] - 2025-12-05
 
 ### 📦 Dependency Updates
