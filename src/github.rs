@@ -24,6 +24,35 @@ impl MatrixCombination {
     }
 }
 
+fn resolve_runs_on(
+    runs_on: Option<&serde_yaml::Value>,
+    matrix_combo: Option<&MatrixCombination>,
+) -> String {
+    let Some(value) = runs_on else {
+        return "ubuntu-latest".to_string();
+    };
+
+    if let Some(label) = value.as_str() {
+        return matrix_combo.map_or_else(|| label.to_string(), |combo| combo.interpolate(label));
+    }
+
+    if let Some(labels) = value.as_sequence() {
+        let resolved = labels
+            .iter()
+            .filter_map(|item| item.as_str())
+            .map(|label| {
+                matrix_combo.map_or_else(|| label.to_string(), |combo| combo.interpolate(label))
+            })
+            .collect::<Vec<_>>();
+
+        if !resolved.is_empty() {
+            return resolved.join(", ");
+        }
+    }
+
+    "ubuntu-latest".to_string()
+}
+
 /// Expand matrix configuration into all possible combinations
 fn expand_matrix(matrix: &serde_yaml::Value) -> Result<Vec<MatrixCombination>> {
     let matrix_obj = matrix
@@ -408,15 +437,7 @@ pub async fn run_job_from_file(
                     println!("  {}", combo_str.yellow());
 
                     // Interpolate runs_on with matrix values
-                    let runs_on_str = if let Some(runs_on_val) = &job.runs_on {
-                        if let Some(s) = runs_on_val.as_str() {
-                            combo.interpolate(s)
-                        } else {
-                            "ubuntu-latest".to_string()
-                        }
-                    } else {
-                        "ubuntu-latest".to_string()
-                    };
+                    let runs_on_str = resolve_runs_on(job.runs_on.as_ref(), Some(combo));
 
                     println!("  Runs on: {}", runs_on_str.blue());
 
@@ -464,11 +485,7 @@ pub async fn run_job_from_file(
             format!("▶ Executing job: {}", job_name).green().bold()
         );
 
-        let runs_on = job
-            .runs_on
-            .as_ref()
-            .and_then(|v| v.as_str())
-            .unwrap_or("ubuntu-latest");
+        let runs_on = resolve_runs_on(job.runs_on.as_ref(), None);
         println!("  Runs on: {}", runs_on.blue());
 
         if let Some(steps) = &job.steps {
@@ -515,13 +532,17 @@ pub async fn run_job_from_file(
             let runtime = container::detect_runtime().await;
 
             // Map runner to image
-            let image = container::map_runner_to_image(runs_on);
+            let image = container::map_runner_to_image(&runs_on);
 
             if image.is_some() {
                 if let Some(img) = image {
                     println!("  Mapped {} → {}", runs_on.blue(), img.yellow());
                 }
-            } else if runs_on.starts_with("macos") || runs_on.starts_with("windows") {
+            } else if runs_on.contains("macOS")
+                || runs_on.contains("macos")
+                || runs_on.contains("windows")
+                || runs_on.contains("Windows")
+            {
                 println!(
                     "\n{} {} runners not supported in containers, using host execution",
                     "⚠".yellow(),
@@ -692,5 +713,35 @@ node: [16, 18, 20]
 
         let result = combo.interpolate("${{ matrix.os }}");
         assert_eq!(result, "ubuntu-latest");
+    }
+
+    #[test]
+    fn test_resolve_runs_on_array_for_self_hosted_runner() {
+        let yaml = r#"
+- self-hosted
+- macOS
+- ARM64
+- custom-runner
+"#;
+        let runs_on: serde_yaml::Value = serde_yaml::from_str(yaml).unwrap();
+        let result = resolve_runs_on(Some(&runs_on), None);
+        assert_eq!(result, "self-hosted, macOS, ARM64, custom-runner");
+    }
+
+    #[test]
+    fn test_resolve_runs_on_array_with_matrix_interpolation() {
+        let yaml = r#"
+- self-hosted
+- ${{ matrix.os }}
+- ARM64
+"#;
+        let runs_on: serde_yaml::Value = serde_yaml::from_str(yaml).unwrap();
+        let mut combo = MatrixCombination {
+            values: HashMap::new(),
+        };
+        combo.values.insert("os".to_string(), "macOS".to_string());
+
+        let result = resolve_runs_on(Some(&runs_on), Some(&combo));
+        assert_eq!(result, "self-hosted, macOS, ARM64");
     }
 }
